@@ -1,0 +1,20 @@
+# Maven
+target/
+*.class
+
+# IDE
+.idea/
+*.iml
+.vscode/
+
+# Spring Boot
+*.jar
+*.war
+
+# Variables d'environnement sensibles
+application-prod.properties
+application-secret.properties
+
+# OS
+.DS_Store
+Thumbs.db
