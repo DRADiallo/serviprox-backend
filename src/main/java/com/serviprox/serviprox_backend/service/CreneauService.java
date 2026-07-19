@@ -1,107 +1,145 @@
 package com.serviprox.serviprox_backend.service;
-
+import com.serviprox.serviprox_backend.dto.CreneauDTO;
 import com.serviprox.serviprox_backend.entity.Creneau;
 import com.serviprox.serviprox_backend.enums.StatutCreneau;
 import com.serviprox.serviprox_backend.repository.CreneauRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
-
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
-public class CreneauService {
+public  class CreneauService {
     private final CreneauRepository creneauRepository;
     private final NotificationService notificationService;
 
-    /**
-     * Créons un créneau pour une intervention
-     *
-     * Contexte sénégalais — Soins à domicile :
-     * Le client DOIT choisir une date, une heure
-     * et une durée estimée AVANT de valider
-     * sa réservation. C'est obligatoire.
-     *
-     * Exemples :
-     * - Coiffure : Samedi 10h, durée 2h
-     * - Ménage   : Lundi 8h, durée 3h
-     * - Vidange fosse : Mercredi 9h, durée 1h
-     */
+    // ═══ CREATE ═══
+    // Créer un créneau pour une intervention
+    //
+    // Contexte sénégalais — Soins à domicile :
+    // Le client DOIT choisir une date, une heure
+    // et une durée estimée AVANT de valider
+    // sa réservation. C'est OBLIGATOIRE.
+    //
+    // Exemples :
+    // Coiffure     : Samedi 10h → 12h
+    // Ménage       : Lundi 8h → 11h
+    // Vidange fosse: Mercredi 9h → 10h
 
-    public Creneau creerCreneau(LocalDateTime dateDebut, LocalDateTime dateFin) {
+    public CreneauDTO creerCreneau(LocalDateTime dateDebut, LocalDateTime dateFin){
 
-        // Vérifions que la date est dans le futur
+        // La date doit être dans le futur
         // On ne peut pas réserver dans le passé !
-
-        if (dateDebut.isBefore(LocalDateTime.now())) {
-            throw new RuntimeException("\"La date du créneau doit être \"\n" + "   + \"dans le futur\"");
+        if (dateDebut.isBefore(LocalDateTime.now())){
+            throw new RuntimeException("La date du créneau doit être " + " dans le futur");
         }
 
-        if (dateFin.isBefore(dateDebut)) {
-            throw new RuntimeException("La date de fin doit être après \"\n" + "   + \"la date de début");
-        }
+        // Vérifier durée minimale — 30 minutes
+        // Une prestation ne peut pas durer
+        // moins de 30 minutes
+         if (dateDebut.plusMinutes(30).isAfter(dateFin)){
+             throw  new RuntimeException("La durée minimale est de 30 minutes ");
 
-        // Creeons creneau avec un statut libre
+         }
+
+        // Créer le créneau avec statut LIBRE
+        // LIBRE = disponible, pas encore réservé
         Creneau creneau = new Creneau();
-        creneau.setDateDebut(dateDebut);
-        creneau.setDateFin(dateFin);
-        creneau.setStatut(StatutCreneau.LIBRE);
-        return creneauRepository.save(creneau);
+         creneau.setDateDebut(dateDebut);
+         creneau.setDateFin(dateFin);
+         creneau.setStatut(StatutCreneau.LIBRE);
+
+         return  toDTO(creneauRepository.save(creneau));
+
     }
 
-        /**
-         * Réservons un créneau
-         *
-         * Quand le client confirme sa réservation,
-         * le créneau passe de LIBRE à RESERVE
-         * pour éviter les doubles réservations
-         */
-    public Creneau reserverCreneau(Long creneauId){
+    // ═══ READ ALL ═══
+    // Tous les créneaux — admin uniquement
+    public CreneauDTO getById(Long id){
+        return toDTO(creneauRepository
+                .findById(id)
+                .orElseThrow(()-> new RuntimeException("Créneau introuvable")));
+    }
+
+    // ═══ READ DISPONIBLES ═══
+    // Flutter affiche ces créneaux au client
+    // pour qu'il choisisse son horaire
+    // Uniquement les créneaux LIBRES
+     public List<CreneauDTO> getDisponibles(){
+
+        return  creneauRepository
+                .findByStatut(StatutCreneau.LIBRE)
+                .stream()
+                .map(this::toDTO)
+                .collect(Collectors.toList());
+     }
+
+    // ═══ READ RÉSERVÉS ═══
+    // Créneaux déjà pris
+    // Utile pour afficher le calendrier
+    // du prestataire dans Flutter
+
+    public List<CreneauDTO>getReserves(){
+
+        return creneauRepository
+                .findByStatut(StatutCreneau.RESERVE)
+                .stream()
+                .map(this::toDTO)
+                .collect(Collectors.toList());
+    }
+
+    // ═══ UPDATE — RÉSERVER ═══
+    // Quand le client confirme sa réservation
+    // LIBRE → RESERVE
+    // Évite les doubles réservations
+    // Ex: deux clients ne peuvent pas réserver
+    // le même créneau de coiffure
+
+    public CreneauDTO reserverCreneau(Long id){
 
         Creneau creneau = creneauRepository
-                .findById(creneauId)
-                .orElseThrow(()-> new RuntimeException("Creneau introuvable"));
+                .findById(id)
+                .orElseThrow(()-> new RuntimeException("Ce créneau Introuvable "));
 
-        // // Vérifions que le créneau n'est pas déjà réservé
-
+        //veuillez choisir un autre horaire
         if (creneau.getStatut()== StatutCreneau.RESERVE){
-            throw new RuntimeException("Ce créneau est déjà réservé. \"\n" + " + \"Veuillez choisir un autre horaire.");
+            throw new RuntimeException("Ce créneau est déjà réservé !! "+ "veuillez choisir un autre horaire");
         }
-
-        // Marquer comme réservé
-
         creneau.setStatut(StatutCreneau.RESERVE);
-        return creneauRepository.save(creneau);
-
-
+        return toDTO(creneauRepository.save(creneau));
     }
 
-    /**
-     * Libérons un créneau
-     *
-     * Si la commande est annulée,
-     * le créneau redevient disponible
-     * pour d'autres clients
-     */
-    public Creneau linbererCreneau(Long creneauId){
+    // ═══ DELETE ═══
+    // Supprimer un créneau
+    // Uniquement si LIBRE
+    // On ne supprime pas un créneau réservé !
 
-        Creneau creneau = creneauRepository
-                .findById(creneauId)
-                .orElseThrow(()->new RuntimeException("Creneau intouvable"));
+    public void supprimer(Long id){
 
-        // Remmettons le creneau disponible afin que les autres clients puissent s en beneficier
+        Creneau creneau= creneauRepository
+                .findById(id)
+                .orElseThrow(()->  new RuntimeException("Creneau Intouvable"));
 
-        creneau.setStatut(StatutCreneau.LIBRE);
-        return creneauRepository.save(creneau);
+        // On ne peut pas supprimer
+        // un créneau déjà réservé
+        if (creneau.getStatut()== StatutCreneau.RESERVE){
 
+            throw new RuntimeException("Impossible de supprimer"+ "un créneau réservé");
+        }
+        creneauRepository.deleteById(id);
     }
 
-    // Creneau disponibles a afficher !!!!
-    public List<Creneau>getCreneauxDisponibles(){
-        return  creneauRepository.findByStatut(StatutCreneau.LIBRE);
+    // ═══ MAPPER entité → DTO ═══
+    public CreneauDTO toDTO(Creneau c){
+
+        CreneauDTO dto = new CreneauDTO();
+        dto.setId(c.getId());
+        dto.setDateDebut(c.getDateDebut());
+        dto.setDateFin(c.getDateFin());
+        dto.setStatut(c.getStatut() !=null ? c.getStatut().name():null);
+
+        return dto;
     }
-
-
-
 }
