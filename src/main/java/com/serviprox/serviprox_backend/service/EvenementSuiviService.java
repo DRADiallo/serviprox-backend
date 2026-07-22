@@ -1,5 +1,6 @@
 package com.serviprox.serviprox_backend.service;
 
+import com.serviprox.serviprox_backend.dto.EvenementSuiviDTO;
 import com.serviprox.serviprox_backend.entity.Commande;
 import com.serviprox.serviprox_backend.entity.EvenementSuivi;
 import com.serviprox.serviprox_backend.repository.CommandeRepository;
@@ -9,6 +10,7 @@ import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -39,7 +41,7 @@ public class EvenementSuiviService {
                                       String nouveauStatut,
                                       String type,
                                       String message,
-                                      Long userId){
+                                      Long acteurId){
         Commande commande= commandeRepository
                 .findById(commandeId)
                 .orElseThrow(()-> new RuntimeException("Commande introuvable "));
@@ -55,13 +57,18 @@ public class EvenementSuiviService {
         // ex: "CONFIRMEE"
         evt.setNouveauStatut(nouveauStatut);
 
+        // Catégorie de l'événement
+        // Ex: "CONFIRMATION", "LITIGE", "PAIEMENT"
         evt.setType(type);
 
+        // Message descriptif
+        // Visible dans timeline Flutter
+        // et interface admin React
         evt.setMessage(message);
 
         // Qui a déclenché l'événement
         // (clientId, prestataireId ou agentId)
-        evt.setActeurId(userId);
+        evt.setActeurId(acteurId);
 
         // Horodatage précis de l'événement
         // Crucial pour les litiges :
@@ -81,8 +88,75 @@ public class EvenementSuiviService {
          * qui a fait quoi et à quelle heure
          */
 
-        public List<EvenementSuivi> getHistorique(Long commandeId){
-            return  evenementSuiviRepository.findByCommandeId(commandeId);
+        public List<EvenementSuiviDTO> getHistorique(Long commandeId){
+            return  evenementSuiviRepository.
+                    findByCommandeId(commandeId)
+                    .stream()
+                    .map(this::toDTO)
+                    .collect(Collectors.toList());
+
+        }
+
+        // ═══ READ BY ID ═══
+        public EvenementSuiviDTO getById(Long id) {
+            return toDTO(evenementSuiviRepository
+                    .findById(id)
+                    .orElseThrow(() ->
+                            new RuntimeException(
+                                    "Événement introuvable")));
+        }
+
+        public List<EvenementSuiviDTO> getAll(){
+            return  evenementSuiviRepository.
+                    findAll()
+                    .stream()
+                    .map(this::toDTO)
+                    .collect(Collectors.toList());
+
+        }
+
+        // ═══ READ BY TYPE ═══
+        // Filtrer par type d'événement
+        // Ex: tous les "LITIGE" pour audit
+        public List<EvenementSuiviDTO> getByType(
+                String type) {
+            return evenementSuiviRepository.findAll()
+                    .stream()
+                    .filter(e -> type.equals(e.getType()))
+                    .map(this::toDTO)
+                    .collect(Collectors.toList());
+        }
+
+        // ═══ DELETE ═══
+        // Supprimer un événement
+        // Uniquement admin — données légales !
+        // En production : ne jamais supprimer
+        // les événements de litige
+
+        public void supprimer(Long id) {
+            if (!evenementSuiviRepository.existsById(id)) {
+                throw new RuntimeException(
+                        "Événement introuvable");
+            }
+            evenementSuiviRepository.deleteById(id);
+        }
+
+        // ═══ MAPPER entité → DTO ═══
+        public EvenementSuiviDTO toDTO(
+                EvenementSuivi e) {
+            EvenementSuiviDTO dto =
+                    new EvenementSuiviDTO();
+            dto.setId(e.getId());
+            dto.setType(e.getType());
+            dto.setAncienStatut(e.getAncienStatut());
+            dto.setNouveauStatut(e.getNouveauStatut());
+            dto.setMessage(e.getMessage());
+            dto.setActeurId(e.getActeurId());
+            dto.setDateEvenement(e.getDateEvenement());
+            if (e.getCommande() != null)
+                dto.setCommandeId(
+                        e.getCommande().getId());
+            return dto;
         }
 
 

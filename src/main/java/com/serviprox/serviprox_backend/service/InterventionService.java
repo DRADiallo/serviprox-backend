@@ -1,5 +1,6 @@
 package com.serviprox.serviprox_backend.service;
 
+import com.serviprox.serviprox_backend.dto.InterventionDTO;
 import com.serviprox.serviprox_backend.entity.Commande;
 import com.serviprox.serviprox_backend.entity.Intervention;
 import com.serviprox.serviprox_backend.enums.StatutCommande;
@@ -11,6 +12,7 @@ import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -30,12 +32,12 @@ public class InterventionService {
      *   Intervention 2 : Livraison du linge traité
      *
      * Réparation → 1 intervention
-     *   Intervention 1 : Visite technicien
+     *   Intervention 1 : Visite technicien ou depot en atelier
      *
      * Soins      → 1 intervention
      *   Intervention 1 : Prestation sur place
      */
-    public Intervention demarrerIntervention(Long commandeId, String adresseDepart,
+    public InterventionDTO demarrerIntervention(Long commandeId, String adresseDepart,
                                              String adresseArrivee,String typeIntervention ){
 
         // COLLECTE, LIVRAISON, REPARATION, SOIN
@@ -44,7 +46,23 @@ public class InterventionService {
                 .findById(commandeId)
                 .orElseThrow(()-> new RuntimeException("Commande introuvable"));
 
-        // Create Intervention
+        /** Vérifier que la commande est CONFIRMEE
+        * On ne peut pas démarrer une intervention
+        * sur une commande non confirmée
+        * Create Intervention
+
+         */
+        if (commande.getStatutCommande() != StatutCommande.CONFIRMEE
+                && commande.getStatutCommande() !=StatutCommande.EN_LIVRAISON){
+            throw new RuntimeException("Impossible de démarrer : "
+                                        + "commande non confirmée. "
+                                        + "Statut : "
+                                        + commande.getStatutCommande());
+
+        }
+
+        // Creons l' intervention
+
         Intervention intervention= new Intervention();
         intervention.setCommande(commande);
         intervention.setAdresseDepart(adresseDepart);
@@ -53,6 +71,7 @@ public class InterventionService {
 
         // heure de debut
         intervention.setDateDebut(LocalDateTime.now());
+        intervention.setStatut("EN_COURS");
 
         // Mettre à jour le statut de la commande
         // CONFIRMEE → EN_TRAITEMENT
@@ -63,9 +82,52 @@ public class InterventionService {
 
         // Notifier le client que l'agent est en route
 
-        notificationService.envoyer(commande.getClient().getId(),"AGENT_EN_ROUTE","Votre agent est en route ! "
-                + "Type : " + typeIntervention);
-        return  saved;
+        notificationService.envoyer(commande.getClient().getId(),"AGENT_EN_ROUTE",
+                                        "Votre agent est en route ! "
+                                        + "Type : " + typeIntervention
+                                        +  " — Suivez sa position en temps réel !");
+        return  toDTO(saved);
+
+    }
+
+    // ═══ READ BY ID ═══
+    public InterventionDTO getById(Long id) {
+        return toDTO(interventionRepository
+                .findById(id)
+                .orElseThrow(() ->
+                        new RuntimeException(
+                                "Intervention introuvable")));
+    }
+
+    // ═══ READ BY COMMANDE ═══
+    // Pressing → retourne 2 interventions
+    //            (collecte + livraison)
+    // Autres   → retourne 1 intervention
+
+    /**
+     * Toutes les interventions d'une commande
+     *
+     * Pour le pressing : retourne 2 interventions
+     * (collecte + livraison)
+     * Pour les autres : retourne 1 intervention
+     */
+
+    public List<InterventionDTO> getByCommande(Long commandeId) {
+
+        return interventionRepository
+                .findByCommandeId(commandeId)
+                .stream()
+                .map(this::toDTO)
+                .collect(Collectors.toList());
+    }
+
+    // ═══ READ ALL ═══
+    // Admin React — supervision
+    public List<InterventionDTO> getAll() {
+        return interventionRepository.findAll()
+                .stream()
+                .map(this::toDTO)
+                .collect(Collectors.toList());
     }
 
     /**
@@ -81,7 +143,7 @@ public class InterventionService {
      * Soins terminés → TERMINEE
      */
 
-    public Intervention terminerIntervention(Long interventionId,String typeIntervention){
+    public InterventionDTO terminerIntervention(Long interventionId,String typeIntervention){
 
         Intervention intervention = interventionRepository
                 .findById(interventionId)
@@ -90,18 +152,20 @@ public class InterventionService {
         // save l heure de fin
 
         intervention.setDateFin(LocalDateTime.now());
+        intervention.setStatut("TERMINEE");
         interventionRepository.save(intervention);
 
         Commande commande = intervention.getCommande();
 
         // Logique selon le type d intervention
+
         if ("COLLECTE".equals(typeIntervention)){
             // Pressing : collecte terminée
             // → passer en EN_LIVRAISON pour le traitement
             commande.setStatutCommande(StatutCommande.EN_LIVRAISON);
 
             notificationService.envoyer(commande.getClient().getId(),"COLLECTE_TERMINEE",
-                    "✅ Collecte terminée ! "
+                    " Collecte terminée ! "
                             + "Votre linge est en cours de traitement."
             );
 
@@ -111,13 +175,13 @@ public class InterventionService {
             commande.setStatutCommande(StatutCommande.TERMINEE);
 
             notificationService.envoyer(commande.getClient().getId(),"INTERVENTION_TERMINEE",
-                    "✅ Prestation terminée ! "
+                    " Prestation terminée ! "
                             + "Veuillez valider et évaluer le service."
             );
 
         }
         commandeRepository.save(commande);
-        return intervention;
+        return  toDTO(intervention);
     }
 
     /**
@@ -129,27 +193,82 @@ public class InterventionService {
      *
      * - Client peut guider l'agent
      */
-    public Intervention mettreAjourPositionGPS(Long interventionId, String positionGPS){
+    public InterventionDTO mettreAjourPositionGPS(Long interventionId, String positionGPS){
 
         Intervention intervention = interventionRepository
                 .findById(interventionId)
                 .orElseThrow(()->new RuntimeException("Intervention inttrouvable "));
          // Update  Position GPS
         intervention.setPositionActuelle(positionGPS);
-        return interventionRepository.save(intervention);
+        return toDTO(interventionRepository.save(intervention));
     }
 
-    /**
-     * Toutes les interventions d'une commande
-     *
-     * Pour le pressing : retourne 2 interventions
-     * (collecte + livraison)
-     * Pour les autres : retourne 1 intervention
-     */
+    // ═══ UPDATE STATUT ═══
+    // Changer le statut de l'intervention
+    // EN_COURS, TERMINEE, ANNULEE
+    public InterventionDTO changerStatut(
+            Long id, String statut) {
+        Intervention intervention =
+                interventionRepository
+                        .findById(id)
+                        .orElseThrow(() ->
+                                new RuntimeException(
+                                        "Intervention introuvable"));
 
-    public List<Intervention> getByCommande(Long commandeId){
-        return  interventionRepository.findByCommandeId(commandeId);
+        intervention.setStatut(statut);
+        return toDTO(interventionRepository
+                .save(intervention));
     }
+
+    // ═══ DELETE ═══
+    // Annuler une intervention
+    // Uniquement si pas encore démarrée
+    public void supprimer(Long id) {
+        Intervention intervention =
+                interventionRepository
+                        .findById(id)
+                        .orElseThrow(() ->
+                                new RuntimeException(
+                                        "Intervention introuvable"));
+
+        // Ne pas supprimer si en cours
+        if ("EN_COURS".equals(
+                intervention.getStatut())) {
+            throw new RuntimeException(
+                    "Impossible de supprimer "
+                            + "une intervention en cours");
+        }
+
+        interventionRepository.deleteById(id);
+    }
+
+    // ═══ MAPPER entité → DTO ═══
+    public InterventionDTO toDTO(
+            Intervention i) {
+        InterventionDTO dto = new InterventionDTO();
+        dto.setId(i.getId());
+        dto.setAdresseDepart(i.getAdresseDepart());
+        dto.setAdresseArrivee(i.getAdresseArrivee());
+        dto.setTypeIntervention(
+                i.getTypeIntervention());
+        dto.setPositionActuelle(
+                i.getPositionActuelle());
+        dto.setDateDebut(i.getDateDebut());
+        dto.setDateFin(i.getDateFin());
+        if (i.getCommande() != null)
+            dto.setCommandeId(
+                    i.getCommande().getId());
+        return dto;
+    }
+
+
+
+
+    
+
+//    public List<Intervention> getByCommande(Long commandeId){
+//        return  interventionRepository.findByCommandeId(commandeId);
+//    }
 
 
 }
