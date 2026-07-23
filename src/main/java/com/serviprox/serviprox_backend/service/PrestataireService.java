@@ -129,7 +129,7 @@ public class PrestataireService {
     }
 
     // ═══ MAPPER entité → DTO ═══
-    private PrestataireDTO toDTO(Prestataire p){
+    public PrestataireDTO toDTO(Prestataire p){
         PrestataireDTO dto = new PrestataireDTO();
         dto.setId(p.getId());
         dto.setNomCommercial(p.getNomCommercial());

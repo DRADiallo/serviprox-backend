@@ -13,7 +13,7 @@ import java.util.List;
  * QR_CODE  → scan étiquettes Option B
  */
 @Data
-public class BonCollecteRequest {
+public class BonCollectRequest {
 
     // Commande concernée
     private Long commandeId;

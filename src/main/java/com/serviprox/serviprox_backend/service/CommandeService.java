@@ -245,7 +245,7 @@ public class CommandeService{
     }
 
     // ═══ MAPPER entité → DTO ═══
-    public  CommandeDTO toDTO(Commande c){
+    public   CommandeDTO toDTO(Commande c){
         CommandeDTO dto= new CommandeDTO();
         dto.setId(c.getId());
         dto.setStatut(c.getStatutCommande() !=null? c.getStatutCommande().name():null);

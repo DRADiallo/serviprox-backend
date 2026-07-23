@@ -1,8 +1,9 @@
 package com.serviprox.serviprox_backend.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.serviprox.serviprox_backend.dto.BonCollecteRequest;
+import com.serviprox.serviprox_backend.dto.BonCollecteRequestDTO;
 import com.serviprox.serviprox_backend.entity.BonArticle;
+import com.serviprox.serviprox_backend.entity.BonCollectRequest;
 import com.serviprox.serviprox_backend.entity.ComparaisonResultat;
 import com.serviprox.serviprox_backend.entity.PreuveRealisation;
 import com.serviprox.serviprox_backend.enums.TypePreuve;
@@ -33,7 +34,7 @@ public class BonService {
     //            Compteurs visuels Flutter
     // QR_CODE  → Option B (Chapitre 8)
     //            Scan étiquettes pressing pro
-    public PreuveRealisation genererBon(BonCollecteRequest request) {
+    public PreuveRealisation genererBon(BonCollectRequest request) {
 
         var commande = commandeRepository
                 .findById(request.getCommandeId())
@@ -47,7 +48,7 @@ public class BonService {
             // ── Mode QR Code ──
             // Perspective Chapitre 8
             articles = traiterQRCodes(
-                    request.getQrCodesScannés());
+                    request.getQrCodesScannees());
         } else {
             // ── Mode Manuel ──
             // Option D — prototype actuel
