@@ -73,7 +73,7 @@ public class PaiementService {
     }
 
     // ═══ READ BY ID ═══
-    public PaiementDTO gettById(Long id){
+    public PaiementDTO getById(Long id){
 
         return toDTO(paiementRepository
                 .findById(id)

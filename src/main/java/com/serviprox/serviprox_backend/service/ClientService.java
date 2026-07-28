@@ -35,6 +35,12 @@ public class ClientService {
 
     }
 
+    public ClientDTO getById(Long id){
+        return toDTO(clientRepository
+                .findById(id)
+                .orElseThrow(()->new RuntimeException("Client Introuvable")));
+    }
+
     // ═══ UPDATE ═══
     // Le client met à jour son profil
     // depuis l'application Flutter
