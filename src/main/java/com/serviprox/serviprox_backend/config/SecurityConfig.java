@@ -5,6 +5,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
+import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -22,6 +23,14 @@ public class SecurityConfig {
         http
                 // Désactiver CSRF — API REST stateless
                 .csrf(csrf->csrf.disable())
+
+                // Désactiver formulaire de login
+                // par défaut de Spring Security
+                .formLogin(AbstractHttpConfigurer::disable)
+
+                // Désactiver HTTP Basic Auth
+                // par défaut de Spring Security
+                .httpBasic(AbstractHttpConfigurer::disable)
 
                 // Pas de session — JWT stateless
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
@@ -47,7 +56,7 @@ public class SecurityConfig {
                         // Interventions, affectations,
                         // position GPS, preuves, bons
                         .requestMatchers("/api/agent/**")
-                        .hasAnyRole("LIVREUR", "AGENT","PRESTAITAIRE","ADMIN")
+                        .hasAnyRole("LIVREUR", "AGENT","PRESTATAIRE","ADMIN")
                         // ══ CLIENT ══
                         // Commandes, devis, paiements,
                         // évaluations, litiges, notifs

@@ -31,6 +31,15 @@ import java.util.List;
 public class JwtAuthFilter  extends OncePerRequestFilter {
 
     private final JwtUtils jwtUtils;
+
+    @Override
+    protected boolean shouldNotFilter(
+            HttpServletRequest request) {
+        String path = request.getRequestURI();
+        return path.startsWith("/api/auth/");
+    }
+
+
     @Override
     protected void doFilterInternal(HttpServletRequest request,
                                     HttpServletResponse response,
@@ -40,7 +49,7 @@ public class JwtAuthFilter  extends OncePerRequestFilter {
 
         // Si pas de token → laisser passer
         // Spring Security gérera l'accès
-        if (authHeader == null || !authHeader.startsWith("Bearer")){
+        if (authHeader == null || !authHeader.startsWith("Bearer ")){
             filterChain.doFilter(request,response);
             return;
         }

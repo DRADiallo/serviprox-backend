@@ -1,5 +1,6 @@
 package com.serviprox.serviprox_backend.service;
 
+import com.serviprox.serviprox_backend.config.JwtUtils;
 import com.serviprox.serviprox_backend.dto.AuthRequest;
 import com.serviprox.serviprox_backend.dto.AuthResponse;
 import com.serviprox.serviprox_backend.dto.RegisterClientRequest;
@@ -21,6 +22,7 @@ public class AuthService {
     private final PrestataireRepository prestataireRepository;
     private final ActeurRepository acteurRepository;
     private final PasswordEncoder passwordEncoder;
+    private final JwtUtils jwtUtils;
 
 
     public AuthResponse registerClient(RegisterClientRequest req){
@@ -39,7 +41,7 @@ public class AuthService {
         clientRepository.save(client);
 
         return new AuthResponse(
-                "token-client"+ client.getId(),
+                jwtUtils.genererToken(client.getId(), "CLIENT"),
                 "CLIENT",
                 client.getId(),
                 client.getNom(),
@@ -66,7 +68,7 @@ public class AuthService {
         prestataireRepository.save(p);
 
         return new AuthResponse(
-                "token"+ p.getId(),
+                jwtUtils.genererToken(p.getId(), "PRESTATAIRE"),
                 "PRESTATAIRE",
                 p.getId(),
                 p.getNom(),
@@ -87,7 +89,7 @@ public class AuthService {
             throw new RuntimeException("Mot de passe incorrect");
         }
         return new AuthResponse(
-                "token"+ acteur.getRole().name().toLowerCase()+ "-"+acteur.getId(),
+                jwtUtils.genererToken(acteur.getId(), acteur.getRole().name()),
                 acteur.getRole().name(),
                 acteur.getId(),
                 acteur.getNom(),
