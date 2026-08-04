@@ -6,6 +6,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
+
 @RestController
 @RequestMapping("/api/devis")
 @CrossOrigin(origins = "*")
@@ -40,7 +42,7 @@ public class DevisController {
     // GET /api/devis
     // Admin — tous les devis
     @GetMapping
-    public ResponseEntity<DevisService> getAll(){
+    public ResponseEntity<List<DevisDTO>> getAll(){
 
         return  ResponseEntity.ok(devisService.getAll());
     }
@@ -49,7 +51,7 @@ public class DevisController {
     // Client accepte le devis
     // → réparation peut commencer
     @PostMapping("/{id}/valider")
-    public ResponseEntity<DevisDTO>valider(@PathVariable Long id){
+    public ResponseEntity<DevisDTO> validerDevis(@PathVariable Long id){
 
         return  ResponseEntity.ok(devisService.validerDevis(id));
     }
@@ -58,7 +60,7 @@ public class DevisController {
     // Client refuse le devis
     // → commande annulée
     @PostMapping("/{id}/refuser")
-    public ResponseEntity<DevisDTO>refuser(@PathVariable Long id){
+    public ResponseEntity<DevisDTO>refuserDevis(@PathVariable Long id){
 
         return  ResponseEntity.ok(devisService.refuserDevis(id));
     }

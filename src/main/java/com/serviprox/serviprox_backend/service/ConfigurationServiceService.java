@@ -31,7 +31,7 @@ public class  ConfigurationServiceService {
     // un nouvel archétype sans toucher
     // au Reference Model
 
-    public ConfigurationService ceer(ConfigurationService configServ){
+    public ConfigurationService creer(ConfigurationService configServ){
         // Vérifier que le typeService est unique
         if (configServiceRepo.findByTypeService(configServ.getTypeService()).isPresent()){
             throw new RuntimeException("un service "+ configServ.getTypeService() + "existe déjà ");

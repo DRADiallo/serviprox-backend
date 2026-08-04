@@ -6,6 +6,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
+
 @RestController
 @RequestMapping("/api/paiement")
 @CrossOrigin(origins = "*")
@@ -29,7 +31,7 @@ public class PaiementController {
     @GetMapping("/commande/{commandeId}")
     public ResponseEntity<PaiementDTO>getByCommande(@PathVariable Long commandeId){
 
-        return ResponseEntity.ok(paiementService.gettByCommande(commandeId));
+        return ResponseEntity.ok(paiementService.getByCommande(commandeId));
     }
 
     // GET /api/paiement/{id}
@@ -37,6 +39,12 @@ public class PaiementController {
     public ResponseEntity<PaiementDTO>getById(@PathVariable Long id){
 
         return ResponseEntity.ok(paiementService.getById(id));
+    }
+    // GET tous les paiements
+    @GetMapping
+    public ResponseEntity<List<PaiementDTO>>getAll(){
+
+        return ResponseEntity.ok(paiementService.getAll());
     }
 
     // PUT /api/paiement/{id}/confirmer
@@ -46,7 +54,16 @@ public class PaiementController {
     @PutMapping("/{id}/confirmer")
     public ResponseEntity<PaiementDTO>confirmer(@PathVariable Long id){
 
-        return ResponseEntity.ok(paiementService.confirmer(id));
+        return ResponseEntity.ok(paiementService.confirmerPaiement(id));
+    }
+
+    // PUT /api/paiement/{id}/rembourser
+    // En cas de litige résolu
+    // en faveur du client
+    @PutMapping("/{id}/rembourser")
+    public ResponseEntity<PaiementDTO>rembourser(@PathVariable Long id){
+
+        return ResponseEntity.ok(paiementService.rembourser(id));
     }
 
 

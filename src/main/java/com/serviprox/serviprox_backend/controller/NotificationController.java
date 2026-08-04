@@ -35,7 +35,7 @@ public class NotificationController {
 
     // GET /api/notification/non-lues/{id}
     // Badge rouge Flutter
-    @PutMapping("/non-lues/{id}")
+    @GetMapping("/non-lues/{id}")
     public ResponseEntity<List<NotificationDTO>>getNonLues(@PathVariable Long id){
 
         return ResponseEntity.ok(notificationService.getNonLues(id));
@@ -50,6 +50,13 @@ public class NotificationController {
         return ResponseEntity.ok().build();
     }
 
+    // GET /api/notification
+    // Admin — toutes les notifications
+    @GetMapping
+    public ResponseEntity<List<NotificationDTO>>getAll(){
+        return  ResponseEntity.ok(notificationService.getAll());
+    }
+
     // DELETE /api/notification/{id}
     // Supprimer une notification
     @DeleteMapping("/{id}")
@@ -58,6 +65,17 @@ public class NotificationController {
        notificationService.supprimer(id);
         return ResponseEntity.ok().build();
     }
+
+    // DELETE /api/notification/toutes/{id}
+    //  vider toutes les notifications
+    @DeleteMapping("/toutes/{destinataireId}")
+    public ResponseEntity<Void>supprimerToutes(@PathVariable Long destinataireId ){
+
+        notificationService.supprimer(destinataireId);
+        return ResponseEntity.ok().build();
+    }
+
+
 
 
 }

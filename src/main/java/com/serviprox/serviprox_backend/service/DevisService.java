@@ -10,6 +10,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.stream.Collectors;
 
 @Service
@@ -151,12 +152,12 @@ public class DevisService {
         );
         return toDTO(saved);
     }
-    public DevisService getAll() {
-        return commandeRepository.
+    public List<DevisDTO> getAll() {
+        return devisRepository.
                 findAll()
                 .stream()
                 .map(this::toDTO)
-                .collect(Collectors.toList());
+                .toList();
     }
 
         // ═══ MAPPER entité → DTO ═══
@@ -174,11 +175,5 @@ public class DevisService {
 
         }
 
-    public DevisService getAll() {
-        return commandeRepository.
-                findAll()
-                .stream()
-                .map(this::toDTO)
-                .collect(Collectors.toList());
-    }
+
 }

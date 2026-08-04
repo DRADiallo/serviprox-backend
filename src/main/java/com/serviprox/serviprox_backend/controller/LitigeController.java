@@ -20,7 +20,7 @@ public class LitigeController {
     // Client signale un problème
     // Après fin de prestation uniquement
     @PostMapping("/{commandeId}/signaler")
-    public ResponseEntity<CommandeDTO>signaler(@PathVariable Long commandeId, @RequestParam String motif, @RequestParam Long clientId){
+    public ResponseEntity<CommandeDTO>signalerLitige(@PathVariable Long commandeId, @RequestParam String motif, @RequestParam Long clientId){
 
         return ResponseEntity.ok(litigeService.signalerLitige(commandeId,motif,clientId));
     }
@@ -29,7 +29,7 @@ public class LitigeController {
     // Prestataire prend une décision
     // RESOLU ou REMBOURSE
     @PutMapping("/{commandeId}/arbitrer")
-    public ResponseEntity<CommandeDTO>arbitrer(@PathVariable Long commandeId, @RequestParam String decision, @RequestParam Long prestataireId){
+    public ResponseEntity<CommandeDTO>arbitrerLitige(@PathVariable Long commandeId, @RequestParam String decision, @RequestParam Long prestataireId){
 
         return ResponseEntity.ok(litigeService.arbitrerLitige(commandeId,decision,prestataireId));
     }

@@ -35,7 +35,7 @@ public class LitigeService {
      *    "L'intervenante est partie trop tôt"
      */
 
-    public Commande signalerLitige(Long commandeId, String motif, Long clientId){
+    public CommandeDTO signalerLitige(Long commandeId, String motif, Long clientId){
 
         Commande commande = commandeRepository
                 .findById(commandeId)
@@ -69,7 +69,7 @@ public class LitigeService {
                 "LITIGE_OUVERT","Litige ouvert pour la commande"+commandeId
         +"\nMotif : "+motif + "\nVeuillez examiner les preuves " + "et contacter le client.");
 
-    return commande;
+    return commandeService.toDTO(commande);
     }
 
     // ═══ ARBITRER UN LITIGE ═══
@@ -82,7 +82,7 @@ public class LitigeService {
     // REMBOURSE → Prestataire reconnaît le problème
     //             Commande ANNULEE
     //             Client remboursé
-    public Commande arbitrerLitige(Long commandeId,String decision,Long prestataireID){
+    public CommandeDTO arbitrerLitige(Long commandeId,String decision,Long prestataireID){
         Commande commande = commandeRepository
                 .findById(commandeId)
                 .orElseThrow(()-> new RuntimeException("Commande introuvable"));
@@ -129,7 +129,7 @@ public class LitigeService {
             throw  new RuntimeException("Decision invalide , utilisez resolu ou Rembourse");
         }
         commandeRepository.save(commande);
-        return  commande;
+        return  commandeService.toDTO(commande);
     }
 
     // ═══ READ — TOUS LES LITIGES ═══
@@ -143,6 +143,7 @@ public class LitigeService {
                 .collect(Collectors.toList());
 
     }
+
     // ═══ READ — LITIGES D'UN CLIENT ═══
     // Historique des litiges du client
 
@@ -154,5 +155,16 @@ public class LitigeService {
                 .map(commandeService::toDTO)
                 .collect(Collectors.toList());
     }
+    // ═══ READ — LITIGES D'UN CLIENT ═══
+    // Historique des litiges du client
+    public List<CommandeDTO> getLitigesPrestataire( Long prestataireId) {
+        return commandeRepository
+                .findByClientId(prestataireId)
+                .stream()
+                .filter(c -> c.getStatutCommande() == StatutCommande.LITIGE)
+                .map(commandeService::toDTO)
+                .toList();
+    }
+
 
 }

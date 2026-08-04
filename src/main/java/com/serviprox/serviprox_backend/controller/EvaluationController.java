@@ -26,6 +26,14 @@ public class EvaluationController {
         return ResponseEntity.ok(evaluationService.creerEvaluation(dto));
     }
 
+    //Get By id
+    @GetMapping("/{id}")
+    public ResponseEntity<EvaluationDTO>getById(@PathVariable Long id){
+
+        return ResponseEntity.ok(evaluationService.getById(id));
+
+    }
+
     // GET /api/evaluation/prestataire/{id}
     // Notes d'un prestataire
     // Flutter affiche les étoiles
@@ -41,5 +49,13 @@ public class EvaluationController {
     public ResponseEntity<List<EvaluationDTO>> getByClient(@PathVariable Long cliendId){
 
         return  ResponseEntity.ok(evaluationService.getByClient(cliendId));
+    }
+
+    //Dellete Evalution
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void>supprimer(@PathVariable Long id){
+
+        evaluationService.supprimer(id);
+        return ResponseEntity.ok().build();
     }
 }

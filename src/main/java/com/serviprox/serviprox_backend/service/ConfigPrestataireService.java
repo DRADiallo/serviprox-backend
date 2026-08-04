@@ -109,7 +109,7 @@ public class ConfigPrestataireService {
     // ═══ UPDATE ZONE UNIQUEMENT ═══
     // Un pressing qui s'agrandit étend sa zone
     // Ex: "Médina" → "Médina, Plateau, Grand Dakar"
-     public ConfigPrestataireDTO modifierZoneCouv(Long prestataireId, String zoneCouv){
+     public ConfigPrestataireDTO modifierZoneCouverture(Long prestataireId, String zoneCouv){
 
         ConfigPrestataire configPress= configPrestataireRepository
                 .findByPrestataireId(prestataireId)
@@ -148,35 +148,8 @@ public class ConfigPrestataireService {
         configPrestataireRepository.deleteById(id);
     }
 
-    // ═══ INITIALISER SERVICES PAR DÉFAUT ═══
-    // À exécuter une seule fois au démarrage
-    // Crée pressing, reparation, soins en base
 
-    public void initialiserServicesParDefaut() {
-
-        creerSiAbsent(
-                "pressing",
-                "Service de Pressing",
-                "[\"collecte\",\"traitement\",\"livraison\"]",
-                false, true
-        );
-
-        creerSiAbsent(
-                "reparation",
-                "Service de Reparation",
-                "[\"diagnostique\",\"devis\"," + "\"reparation\",\"restitution\"]",
-                false, true
-        );
-
-        creerSiAbsent(
-                "soins",
-                "Service de Soins",
-                "[\"reservation\",\"deplacement\"," + "\"intervention\",\"validation\"]",
-                false, true
-        );
-    }
-
-        // Méthode utilitaire — crée service si absent
+    // Méthode utilitaire — crée service si absent
         private void creerSiAbsent( String typeService, String label,
     String etapes, boolean exigeDevis,  boolean exigePreuve ){
 

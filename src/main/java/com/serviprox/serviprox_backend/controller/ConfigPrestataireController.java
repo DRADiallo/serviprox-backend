@@ -71,7 +71,7 @@ public class ConfigPrestataireController {
     @PutMapping("/{prestataireId}/zone")
     public ResponseEntity<ConfigPrestataireDTO>modifierZone(@PathVariable Long prestataireId, @RequestParam String zone){
 
-        return ResponseEntity.ok(configPrestataireService.modifierZoneCouv(prestataireId,zone));
+        return ResponseEntity.ok(configPrestataireService.modifierZoneCouverture(prestataireId,zone));
     }
 
     // PUT /api/prestataire/config/{id}/options

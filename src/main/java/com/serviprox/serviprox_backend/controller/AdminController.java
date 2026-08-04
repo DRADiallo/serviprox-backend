@@ -57,7 +57,7 @@ public class AdminController {
     // PUT /api/admin/prestataires/{id}/valider
     // Admin valide un prestataire
     @PutMapping("/prestataires/{id}/valider")
-    public ResponseEntity<PrestataireDTO>valider(@PathVariable Long id){
+    public ResponseEntity<PrestataireDTO>validerPrestataire(@PathVariable Long id){
 
         return ResponseEntity.ok(adminService.validerPrestataire(id));
     }
@@ -65,7 +65,7 @@ public class AdminController {
     // PUT /api/admin/prestataires/{id}/rejeter
     // Admin rejette un prestataire
     @PutMapping("/prestataires/{id}/rejeter")
-    public ResponseEntity<PrestataireDTO>rejeter(@PathVariable Long id,@RequestParam String motif){
+    public ResponseEntity<PrestataireDTO>rejeterPrestataire(@PathVariable Long id,@RequestParam String motif){
 
         return ResponseEntity.ok(adminService.rejeterPrestataire(id ,motif));
     }
@@ -74,14 +74,14 @@ public class AdminController {
     // PUT /api/admin/prestataires/{id}/suspendre
     // Admin suspend un prestataire
     @PutMapping("/prestataires/{id}/suspendre")
-    public ResponseEntity<PrestataireDTO>suspendre(@PathVariable Long id,@RequestParam String motif){
+    public ResponseEntity<PrestataireDTO>suspendrePrestataire(@PathVariable Long id,@RequestParam String motif){
 
         return ResponseEntity.ok(adminService.suspendrePrestataire(id,motif));
     }
 
     // PUT /api/admin/prestataires/{id}/reactiver
     @PutMapping("/prestataires/{id}/reactiver")
-    public ResponseEntity<PrestataireDTO>reactiver(@PathVariable Long id){
+    public ResponseEntity<PrestataireDTO>reactiverPrestataire(@PathVariable Long id){
 
         return ResponseEntity.ok(adminService.ractiverPrestataire(id));
     }
@@ -97,7 +97,7 @@ public class AdminController {
     // GET /api/admin/litiges
     // Tous les litiges en cours
     @GetMapping("/commandes/litiges")
-    public ResponseEntity<List<CommandeDTO>>getAllLitiges(){
+    public ResponseEntity<List<CommandeDTO>>getAllCommandesLitiges(){
 
         return ResponseEntity.ok(adminService.getAllCommandesLitiges());
     }

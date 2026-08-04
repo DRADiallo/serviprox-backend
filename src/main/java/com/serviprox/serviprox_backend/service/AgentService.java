@@ -127,7 +127,7 @@ public class AgentService {
     // Flutter affiche position en temps réel au client
     // Format : "14.7167,-17.4677" (lat,lng Dakar)
 
-    public AgentDTO updatePositionGPS(Long id, String position){
+    public AgentDTO actualiserPositionGPS(Long id, String position){
 
         Agent agent = agentRepository
                 .findById(id)
@@ -162,6 +162,20 @@ public class AgentService {
         return toDTO(agentRepository.save(agent));
     }
 
+    // ═══ GET POSITION ACTUELLE ═══
+    // Retourne la position GPS actuelle
+    // de l'agent — appelée par GPSController
+    // Flutter client interroge toutes les 5s
+    // pour afficher sur Google Maps
+    public String getPositionActuelle( Long agentId) {
+        Agent agent = agentRepository
+                .findById(agentId)
+                .orElseThrow(() ->
+                        new RuntimeException(
+                                "Agent introuvable"));
+        return agent.getPositionActuelle();
+    }
+
 
     // ═══ MAPPER entité → DTO ═══
     public  AgentDTO toDTO(Agent a){
@@ -181,4 +195,6 @@ public class AgentService {
 
         return dto;
     }
+
+
 }

@@ -82,14 +82,24 @@ public class PaiementService {
     }
 
     // ═══ READ BY COMMANDE ═══
-    public PaiementDTO gettByCommande(Long paiementId){
+    public PaiementDTO getByCommande(Long commandeId){
+
+        return  toDTO(paiementRepository
+                .findById(commandeId)
+                .orElseThrow(()->new RuntimeException("Paiement Introuvable")));
+
+    }
+    // ═══ CONFIRMER PAIEMENT ═══
+    // Séparée de getByCommande()
+
+    public PaiementDTO confirmerPaiement(Long id){
 
         Paiement paiement= paiementRepository
-                .findById(paiementId)
-                .orElseThrow(()->new RuntimeException("Paiement Introuvable"));
+                .findById(id)
+                .orElseThrow(()-> new RuntimeException("Paiement Introuvable"));
         paiement.setStatut(StatutPaiement.EFFECTUE);
         paiement.setDatePaiement(LocalDateTime.now());
-        Paiement saved = paiementRepository.save(paiement);
+        Paiement saved= paiementRepository.save(paiement);
 
         // Clôturer la commande
         var commande = paiement.getCommande();
@@ -102,9 +112,9 @@ public class PaiementService {
                 commande.getPrestataire().getId(),
                 "PAIEMENT_CONFIRME",
                 "Paiement de"
-                + paiement.getCommande()
-                +"FCFA confirmé "
-                +" - Commande # "+ commande.getId()
+                        + paiement.getCommande()
+                        +"FCFA confirmé "
+                        +" - Commande # "+ commande.getId()
 
         );
         //Notifier le Client

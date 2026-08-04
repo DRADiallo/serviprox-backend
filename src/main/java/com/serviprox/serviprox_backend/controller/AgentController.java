@@ -57,7 +57,7 @@ public class AgentController {
 
     // PUT /api/agent/{id}
     // Modifier infos agent
-    @PutMapping("/{id}")
+    @PutMapping("/{id}/modifier")
     public ResponseEntity<AgentDTO> modifier(@PathVariable Long prestataireId, @RequestBody AgentDTO dto){
 
         return ResponseEntity.ok(agentService.modifier(prestataireId,dto));
@@ -78,7 +78,7 @@ public class AgentController {
     @PutMapping("/{id}/position")
     public ResponseEntity<AgentDTO> mettreAJourPosition(@PathVariable Long id, @RequestParam String position){
 
-        return ResponseEntity.ok(agentService.updatePositionGPS(id,position));
+        return ResponseEntity.ok(agentService.actualiserPositionGPS(id,position));
     }
 
     // PUT /api/agent/{id}/desactiver

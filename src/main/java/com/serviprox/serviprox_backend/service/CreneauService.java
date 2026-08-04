@@ -76,6 +76,14 @@ public  class CreneauService {
                 .collect(Collectors.toList());
      }
 
+     // Get All Admin
+    public  List<CreneauDTO > getAll(){
+        return  creneauRepository.findAll()
+                .stream()
+                .map(this::toDTO)
+                .toList();
+    }
+
     // ═══ READ RÉSERVÉS ═══
     // Créneaux déjà pris
     // Utile pour afficher le calendrier
@@ -129,6 +137,18 @@ public  class CreneauService {
             throw new RuntimeException("Impossible de supprimer"+ "un créneau réservé");
         }
         creneauRepository.deleteById(id);
+    }
+    // ═══ LIBÉRER UN CRÉNEAU ═══
+    // Si commande annulée → créneau redevient
+    // disponible pour d'autres clients
+    // RESERVE → LIBRE
+    public CreneauDTO libererCreneau(Long id){
+
+        Creneau creneau = creneauRepository
+                .findById(id)
+                .orElseThrow(()-> new RuntimeException("Creneau Introuvale"));
+        creneau.setStatut(StatutCreneau.LIBRE);
+        return toDTO(creneau);
     }
 
     // ═══ MAPPER entité → DTO ═══

@@ -2,6 +2,7 @@ package com.serviprox.serviprox_backend.controller;
 
 
 import com.serviprox.serviprox_backend.entity.ConfigurationService;
+import com.serviprox.serviprox_backend.service.ConfigurationServiceService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -19,7 +20,7 @@ import java.util.List;
 @RequiredArgsConstructor
 public class ConfigurationServiceController {
 
-    private final ConfigurationService configurationService;
+    private final ConfigurationServiceService configurationServiceService;
 
     // POST /api/service-config
     // Admin crée un nouveau type de service
@@ -27,7 +28,7 @@ public class ConfigurationServiceController {
     @PostMapping
     public ResponseEntity<ConfigurationService>creer(@RequestBody ConfigurationService config ){
 
-        return ResponseEntity.ok(configurationService.creer(config));
+        return ResponseEntity.ok(configurationServiceService.creer(config));
 
     }
 
@@ -37,7 +38,7 @@ public class ConfigurationServiceController {
     @GetMapping("/actifs")
     public ResponseEntity<List<ConfigurationService>> getAllActifs(){
 
-        return ResponseEntity.ok(configurationService.getActif());
+        return ResponseEntity.ok(configurationServiceService.getAllActifs());
     }
 
     // GET /api/service-config
@@ -46,7 +47,7 @@ public class ConfigurationServiceController {
     @GetMapping
     public ResponseEntity<List<ConfigurationService>> getAllAdmin(){
 
-        return ResponseEntity.ok(configurationService.getAllAdmin());
+        return ResponseEntity.ok(configurationServiceService.getAll());
     }
 
     // GET /api/service-config/type/{type}
@@ -54,14 +55,14 @@ public class ConfigurationServiceController {
     @GetMapping("/type/{typeService}")
     public ResponseEntity<ConfigurationService> getByType(@PathVariable String typeService){
 
-        return ResponseEntity.ok(configurationService.getByType(typeService);
+        return ResponseEntity.ok(configurationServiceService.getByType(typeService));
     }
 
     // GET /api/service-config/{id}
     @GetMapping("/{id}")
     public ResponseEntity<ConfigurationService> getById(@PathVariable Long id){
 
-        return ResponseEntity.ok(configurationService.getByType(id));
+        return ResponseEntity.ok(configurationServiceService.getById(id));
     }
 
     // PUT /api/service-config/{id}
@@ -70,7 +71,7 @@ public class ConfigurationServiceController {
     @PutMapping("/{id}")
     public ResponseEntity<ConfigurationService>modifier(@PathVariable Long id,@RequestBody ConfigurationService config){
 
-        return ResponseEntity.ok(configurationService.modifier(id,config);
+        return ResponseEntity.ok(configurationServiceService.modifier(id,config));
     }
 
     // PUT /api/service-config/{id}/activer
@@ -78,7 +79,7 @@ public class ConfigurationServiceController {
     @PutMapping("/{id}")
     public ResponseEntity<ConfigurationService>activer(@PathVariable Long id){
 
-        return ResponseEntity.ok(configurationService.activer(id));
+        return ResponseEntity.ok(configurationServiceService.activer(id));
     }
 
     // PUT /api/service-config/{id}/desactiver
@@ -86,7 +87,7 @@ public class ConfigurationServiceController {
     @PutMapping("/{id}")
     public ResponseEntity<ConfigurationService>desactiver(@PathVariable Long id){
 
-        return ResponseEntity.ok(configurationService.desactiver(id));
+        return ResponseEntity.ok(configurationServiceService.desactiver(id));
     }
 
     // POST /api/service-config/initialiser
@@ -95,9 +96,10 @@ public class ConfigurationServiceController {
     @PostMapping("/initialiser")
     public ResponseEntity<Void> initialiser(){
 
-        configurationService.initialiserParDefaut();
+        configurationServiceService.initialiserParDefaut();
         return ResponseEntity.ok().build();
     }
+
 
 
 
