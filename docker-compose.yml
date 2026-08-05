@@ -1,0 +1,201 @@
+# Version de la syntaxe docker-compose
+# 3.8 = version stable et compatible
+version: '3.8'
+
+# Liste de tous les services (conteneurs)
+services:
+
+  # ══════════════════════════════════════
+  # SERVICE 1 — PostgreSQL
+  # Base de données de l'application
+  # ══════════════════════════════════════
+  postgres:
+    # Image officielle PostgreSQL version 15
+    # alpine = version légère
+    image: postgres:15-alpine
+
+    # Nom du conteneur dans Docker
+    # Utilisé pour identifier le conteneur
+    # dans les commandes docker
+    container_name: serviprox-db
+
+    # Variables d'environnement PostgreSQL
+    # Configurent automatiquement la base
+    environment:
+      # Nom de la base de données à créer
+      POSTGRES_DB: serviprox_db
+      # Utilisateur PostgreSQL à créer
+      POSTGRES_USER: serviprox_user
+      # Mot de passe de l'utilisateur
+      POSTGRES_PASSWORD: serviprox2026
+
+    # Mapping de ports
+    # "host:conteneur"
+    # 5432:5432 = port local 5432 → port conteneur 5432
+    # Permet d'accéder à PostgreSQL depuis votre PC
+    ports:
+      - "5432:5432"
+
+    # Volume pour persister les données
+    # Sans volume → données perdues si conteneur redémarre !
+    # postgres_data = nom du volume défini en bas du fichier
+    # /var/lib/postgresql/data = dossier données PostgreSQL
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+    # Réseau Docker partagé avec les autres services
+    # Permet aux conteneurs de communiquer entre eux
+    networks:
+      - serviprox-network
+
+    # Vérification santé du service
+    # Spring Boot attend que PostgreSQL soit PRÊT
+    # avant de démarrer
+    healthcheck:
+      # Commande de vérification
+      # pg_isready = outil PostgreSQL qui vérifie
+      # si la base accepte des connexions
+      test: ["CMD-SHELL",
+             "pg_isready -U serviprox_user -d serviprox_db"]
+      # Vérifier toutes les 10 secondes
+      interval: 10s
+      # Timeout si pas de réponse après 5 secondes
+      timeout: 5s
+      # Nombre d'essais avant de déclarer "unhealthy"
+      retries: 5
+
+  # ══════════════════════════════════════
+  # SERVICE 2 — Spring Boot Backend
+  # Notre application ServiProx
+  # ══════════════════════════════════════
+  serviprox-backend:
+    # Construire l'image avec le Dockerfile
+    # . = chercher le Dockerfile dans le dossier courant
+    build: .
+
+    # Nom du conteneur
+    container_name: serviprox-backend
+
+    # Port exposé vers l'extérieur
+    # 7090:7090 = port local 7090 → port conteneur 7090
+    # Flutter et React appellent http://localhost:7090
+    ports:
+      - "7090:7090"
+
+    # Variables d'environnement Spring Boot
+    # Surchargent application.properties
+    environment:
+      # URL de connexion PostgreSQL
+      # "postgres" = nom du service PostgreSQL ci-dessus
+      # Docker résout automatiquement "postgres" en IP interne
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/serviprox_db
+
+      # Identifiants base de données
+      SPRING_DATASOURCE_USERNAME: serviprox_user
+      SPRING_DATASOURCE_PASSWORD: serviprox2026
+
+      # Hibernate crée/met à jour les tables automatiquement
+      SPRING_JPA_HIBERNATE_DDL_AUTO: update
+
+      # Afficher les requêtes SQL dans les logs
+      SPRING_JPA_SHOW_SQL: "true"
+
+      # Clé secrète JWT pour signer les tokens
+      JWT_SECRET: serviprox-secret-key-2026-uasz-senegal-m2
+
+      # Durée de validité du token : 24h en millisecondes
+      JWT_EXPIRATION: "86400000"
+
+      # Port d'écoute Spring Boot
+      SERVER_PORT: "7090"
+
+    # Dépendance : attendre que PostgreSQL soit prêt
+    # condition: service_healthy = attendre le healthcheck OK
+    # Sans ça → Spring Boot démarre avant PostgreSQL → erreur !
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+    # Réseau partagé avec PostgreSQL
+    networks:
+      - serviprox-network
+
+    # Redémarrer automatiquement en cas d'erreur
+    # on-failure = redémarrer seulement si code erreur
+    # always = redémarrer toujours (même si arrêt manuel)
+    restart: on-failure
+
+  # ══════════════════════════════════════
+  # SERVICE 3 — SonarQube
+  # Analyse qualité du code
+  # Accessible sur http://localhost:9000
+  # Login : admin / admin
+  # ══════════════════════════════════════
+  sonarqube:
+    # Image officielle SonarQube version 10
+    # community = version gratuite
+    image: sonarqube:9.9-community
+
+    # Nom du conteneur
+    container_name: serviprox-sonar
+
+    # Désactiver la vérification Elasticsearch
+    # Nécessaire pour éviter des erreurs
+    # sur certaines configurations système
+    environment:
+      SONAR_ES_BOOTSTRAP_CHECKS_DISABLE: "true"
+      #Pour memoire virtuelle Elasticsearch
+      SONAR_SEARCH_JAVAOPTS: "-Xmx512m -Xms512m -XX:MaxDirectMemorySize=256m"
+      SONAR_WEB_JAVAOPTS: "-Xmx512m -Xms128m"
+      SONAR_CE_JAVAOPTS: "-Xmx512m -Xms128m"
+
+    # Port SonarQube
+    # 9000:9000 = port local 9000 → port conteneur 9000
+    ports:
+      - "9000:9000"
+
+    # Volumes pour persister les données SonarQube
+    # sonar_data = résultats d'analyse
+    # sonar_logs = journaux d'activité
+    volumes:
+      - sonar_data:/opt/sonarqube/data
+      - sonar_logs:/opt/sonarqube/logs
+      - sonar_extensions:/opt/sonarqube/extensions
+
+    # Réseau partagé
+    networks:
+      - serviprox-network
+    # ← AJOUT : limites mémoire
+    ulimits:
+          nofile:
+            soft: 65536
+            hard: 65536
+          nproc:
+            soft: 4096
+            hard: 4096
+
+# ══════════════════════════════════════
+# RÉSEAU DOCKER
+# Réseau virtuel partagé entre tous les services
+# Permet la communication inter-conteneurs
+# ══════════════════════════════════════
+networks:
+  serviprox-network:
+    # bridge = réseau par défaut Docker
+    # Isole les conteneurs du reste du système
+    driver: bridge
+
+# ══════════════════════════════════════
+# VOLUMES PERSISTANTS
+# Stockage des données qui survivent
+# aux redémarrages des conteneurs
+# ══════════════════════════════════════
+volumes:
+  # Données PostgreSQL
+  postgres_data:
+  # Données SonarQube
+  sonar_data:
+  # Logs SonarQube
+  sonar_logs:
+  sonar_extensions:
+  
