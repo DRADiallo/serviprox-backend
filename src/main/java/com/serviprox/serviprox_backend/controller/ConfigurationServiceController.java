@@ -68,7 +68,7 @@ public class ConfigurationServiceController {
     // PUT /api/service-config/{id}
     // Admin modifie un type de service
     // Ex: ajouter une étape au workflow jardinage
-    @PutMapping("/{id}")
+    @PutMapping("/{id}/modifier")
     public ResponseEntity<ConfigurationService>modifier(@PathVariable Long id,@RequestBody ConfigurationService config){
 
         return ResponseEntity.ok(configurationServiceService.modifier(id,config));
@@ -76,7 +76,7 @@ public class ConfigurationServiceController {
 
     // PUT /api/service-config/{id}/activer
     // Rendre service visible sur Flutter
-    @PutMapping("/{id}")
+    @PutMapping("/{id}/activer")
     public ResponseEntity<ConfigurationService>activer(@PathVariable Long id){
 
         return ResponseEntity.ok(configurationServiceService.activer(id));
@@ -84,7 +84,7 @@ public class ConfigurationServiceController {
 
     // PUT /api/service-config/{id}/desactiver
     // Cacher service sans supprimer
-    @PutMapping("/{id}")
+    @PutMapping("/{id}/desactiver")
     public ResponseEntity<ConfigurationService>desactiver(@PathVariable Long id){
 
         return ResponseEntity.ok(configurationServiceService.desactiver(id));

@@ -27,7 +27,7 @@ public class AgentController {
 
     // GET /api/agent
     // Admin — tous les agents
-    @GetMapping("/{id}")
+    @GetMapping
     public ResponseEntity<List<AgentDTO>> getAll(){
         return ResponseEntity.ok(agentService.getAll());
     }
@@ -97,6 +97,16 @@ public class AgentController {
     public ResponseEntity<AgentDTO> reactiver(@PathVariable Long id){
 
         return ResponseEntity.ok(agentService.reactiverAgent(id));
+    }
+
+    // GET /api/gps/agent/{id}
+    // Client récupère position agent
+    // Appelé par Flutter toutes les 5 secondes
+    // → affiche sur Google Maps
+    @GetMapping("/agent/{agentId}")
+    public ResponseEntity<String>getPosition(@PathVariable Long agentId){
+        AgentDTO agent = agentService.getById(agentId);
+        return ResponseEntity.ok(agentService.getPositionActuelle(agentId));
     }
 
 

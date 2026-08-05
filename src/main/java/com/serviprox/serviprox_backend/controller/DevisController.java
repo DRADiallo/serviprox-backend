@@ -34,7 +34,7 @@ public class DevisController {
 
     // GET /api/devis/commande/{commandeId}
     // Client voit son devis
-    @PostMapping("/commande/{commandeId}")
+    @GetMapping ("/commande/{commandeId}")
     public ResponseEntity<DevisDTO>getByCommande(@PathVariable Long commandeId){
 
         return  ResponseEntity.ok(devisService.getByCommande(commandeId));
@@ -64,10 +64,5 @@ public class DevisController {
 
         return  ResponseEntity.ok(devisService.refuserDevis(id));
     }
-
-
-
-
-
 
 }

@@ -41,6 +41,8 @@ public class PrestataireController {
         return ResponseEntity.ok(prestataireService.getById(id));
     }
 
+
+
     // GET /api/prestataire/zone?zone=Médina
     // Flutter — prestataires par zone
     // Client cherche dans son quartier
@@ -52,7 +54,7 @@ public class PrestataireController {
     // PUT /api/prestataire/{id}
     // Prestataire modifie son profil
     @PutMapping("/{id}")
-    public ResponseEntity<PrestataireDTO>modifier(@PathVariable Long id, PrestataireDTO dto){
+    public ResponseEntity<PrestataireDTO>modifier(@PathVariable Long id, @RequestBody PrestataireDTO dto){
 
         return ResponseEntity.ok(prestataireService.modifier(id,dto));
     }

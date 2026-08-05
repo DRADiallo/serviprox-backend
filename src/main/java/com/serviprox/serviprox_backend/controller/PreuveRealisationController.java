@@ -23,7 +23,7 @@ public class PreuveRealisationController {
     // Agent ajoute une preuve
     // PHOTO, VIDEO ou SIGNATURE
     @PostMapping("/commande/{commandeId}")
-    public ResponseEntity<PreuveRealisationDTO>ajouter(@PathVariable Long commandeId,
+    public ResponseEntity<PreuveRealisationDTO>ajouterPreuve(@PathVariable Long commandeId,
                                                        @RequestParam String typePreuve,
                                                        @RequestParam String contenuUrl,
                                                        @RequestParam Long agentId){
@@ -43,7 +43,7 @@ public class PreuveRealisationController {
     }
 
     // GET /api/preuve/{id}
-    @GetMapping
+    @GetMapping("/{id}")
     public ResponseEntity<PreuveRealisationDTO>getById(@PathVariable Long id){
         return  ResponseEntity.ok(preuveRealisationService.getById(id));
     }
@@ -59,8 +59,8 @@ public class PreuveRealisationController {
     // POST /api/preuve/comparer/{commandeId}
     // Comparer bon collecte vs bon livraison
     // Innovation pressing ServiProx !
-    @PostMapping("/comparer/comparerId}")
-    public ResponseEntity<Boolean>comparer(@PathVariable Long commandeId,
+    @PostMapping("/comparer/{comparerId}")
+    public ResponseEntity<Boolean>comparerBons(@PathVariable Long commandeId,
                                            @RequestParam String urlBonColllecte,
                                            @RequestParam String urlBonLivraison){
 
@@ -71,7 +71,7 @@ public class PreuveRealisationController {
     // Admin uniquement — données légales !
     @DeleteMapping("/{id}")
     public ResponseEntity<Void>supprimer(@PathVariable Long id){
-        preuveRealisationService.supprimer(id);
+        preuveRealisationService.supprimerPreuve(id);
         return ResponseEntity.ok().build();
     }
 

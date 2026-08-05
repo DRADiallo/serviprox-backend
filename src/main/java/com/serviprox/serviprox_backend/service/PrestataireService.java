@@ -28,7 +28,7 @@ public class PrestataireService {
         return prestataireRepository.findAll()
                 .stream()
                 .map(this::toDTO)
-                .collect(Collectors.toList());
+                .toList();
 
     }
     // ═══ READ ACTIFS ═══

@@ -163,7 +163,7 @@ public class PreuveRealisationService{
     // Supprimer une preuve
     // Uniquement par l'admin en cas d'erreur
     // Les preuves sont des éléments légaux !
-    public  void supprimer(Long id ){
+    public  void supprimerPreuve(Long id ){
 
         if (!preuveRealisationRepository.existsById(id)){
             throw new RuntimeException("Preuve Introuvable");
