@@ -114,7 +114,7 @@ public class CommandeService{
     // Affiché dans l'onglet "Mes commandes" Flutter
     public List<CommandeDTO> getByClient(Long id){
         return commandeRepository
-                .findById(id)
+                .findByClientId(id)
                 .stream()
                 .map(this::toDTO)
                 .collect(Collectors.toList());
