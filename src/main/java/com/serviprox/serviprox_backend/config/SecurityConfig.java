@@ -41,27 +41,42 @@ public class SecurityConfig {
                         .requestMatchers("/api/auth/**")
                         .permitAll()
 
+                        // Un client doit voir les prestataires !
+                        .requestMatchers(
+                                "/api/prestataire",
+                                "/api/prestataire/zone",
+                                "/api/prestataire/tous")
+                        .authenticated()
+                       // .hasAnyRole("CLIENT", "PRESTATAIRE", "ADMIN")
+
                         // ══ ADMIN ══
                         // Toute la supervision React
                         // Dashboard, validation, stats
                         .requestMatchers("/api/admin/**")
                         .hasRole("ADMIN")
+
                             // ══ PRESTATAIRE ══
                             // Gestion service, agents,
                             // commandes, config, devis
+
                         .requestMatchers("/api/prestataire/**")
                         .hasAnyRole("PRESTATAIRE","ADMIN")
 
                         // ══ AGENT/LIVREUR ══
                         // Interventions, affectations,
                         // position GPS, preuves, bons
+
                         .requestMatchers("/api/agent/**")
                         .hasAnyRole("LIVREUR", "AGENT","PRESTATAIRE","ADMIN")
+
                         // ══ CLIENT ══
                         // Commandes, devis, paiements,
                         // évaluations, litiges, notifs
+
                         .requestMatchers("/api/client/**")
                         .hasAnyRole("CLIENT","ADMIN")
+
+
                         // ══ TOUS AUTHENTIFIÉS ══
                         // Endpoints partagés
                         .anyRequest().authenticated()

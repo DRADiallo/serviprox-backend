@@ -24,6 +24,12 @@ public class Prestataire extends Acteur{
     @Column
     private String zoneCouverture;
 
+    // ← AJOUT : type de service proposé
+    // Ex: "Pressing", "Réparation", "Soins domicile"
+    // Correspond au typeService dans ConfigurationService
+    @Column
+    private String typeService;
+
     // Commandes reçues
     @OneToMany(mappedBy = "prestataire", cascade = CascadeType.ALL)
     private List<Commande> commandes;

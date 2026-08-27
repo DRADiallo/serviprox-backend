@@ -2,12 +2,13 @@
 # ÉTAPE 1 — BUILD
 # On compile l'application dans une image JDK
 # ═══════════════════════════════════════════
+FROM maven:3.9-eclipse-temurin-21-alpine AS build
 
 # Image de base Java 21 avec JDK
 # eclipse-temurin = distribution Java officielle
 # alpine = version légère de Linux (5MB au lieu de 200MB)
 # AS build = nom de cette étape (réutilisé plus bas)
-FROM eclipse-temurin:21-jdk-alpine AS build
+#FROM eclipse-temurin:21-jdk-alpine AS build
 
 # Définir le dossier de travail dans le conteneur
 # Tous les fichiers seront copiés ici

@@ -63,6 +63,7 @@ public class AuthService {
         p.setZoneCouverture(req.getZoneCouverture());
         p.setMotDePasse(
                 passwordEncoder.encode(req.getMotDePasse()));
+        p.setTypeService(req.getTypeService());
 
         p.setStatut(StatutActeur.EN_ATTENTE_VALIDATION);
         prestataireRepository.save(p);
