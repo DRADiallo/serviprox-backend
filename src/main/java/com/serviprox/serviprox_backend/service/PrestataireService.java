@@ -1,6 +1,7 @@
 package com.serviprox.serviprox_backend.service;
 
 import com.serviprox.serviprox_backend.dto.PrestataireDTO;
+import com.serviprox.serviprox_backend.entity.ConfigPrestataire;
 import com.serviprox.serviprox_backend.entity.Prestataire;
 import com.serviprox.serviprox_backend.enums.StatutActeur;
 import com.serviprox.serviprox_backend.repository.PrestataireRepository;
@@ -136,6 +137,26 @@ public class PrestataireService {
         dto.setZone(p.getZoneCouverture());
         dto.setNoteMoyenne(p.getNoteMoyenne());
         dto.setOuvert(p.getStatut()== StatutActeur.ACTIF);
+        dto.setTypeService(p.getTypeService());
+        dto.setAdresse(p.getZoneCouverture());
+
+        // : inclure la config dans le DTO
+        if (p.getConfigPrestataire() != null) {
+            ConfigPrestataire c = p.getConfigPrestataire();
+            // Construire configData comme JSON string
+            dto.setConfigData(String.format(
+                    "{\"tarifsPersonnalises\":%s," +
+                            "\"optionsActives\":%s," +
+                            "\"prestationsAjoutees\":%s}",
+                    c.getTarifsPersonnalises() != null
+                            ? c.getTarifsPersonnalises() : "{}",
+                    c.getOptionsActives() != null
+                            ? c.getOptionsActives() : "{}",
+                    c.getPrestationsAjoutees() != null
+                            ? c.getPrestationsAjoutees() : "[]"
+            ));
+        }
+
         return  dto;
     }
 

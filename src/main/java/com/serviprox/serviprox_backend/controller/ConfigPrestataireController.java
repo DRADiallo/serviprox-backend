@@ -43,9 +43,9 @@ public class ConfigPrestataireController {
     // Flutter lit la config du prestataire
     // → affiche tarifs et options au client
     @GetMapping("/{prestataireId}")
-    public ResponseEntity<ConfigPrestataireDTO> getByPrestataire(@PathVariable Long prestatareId){
+    public ResponseEntity<ConfigPrestataireDTO> getByPrestataire(@PathVariable Long prestataireId){
 
-        return ResponseEntity.ok(configPrestataireService.getByPrestataire(prestatareId));
+        return ResponseEntity.ok(configPrestataireService.getByPrestataire(prestataireId));
     }
 
     // GET /api/prestataire/config

@@ -39,7 +39,8 @@ public class Prestataire extends Acteur{
     private List<Agent> agents;
 
     // Configuration personnalisée
-    @OneToOne(mappedBy = "prestataire", cascade = CascadeType.ALL)
+    //  EAGER charge la config automatiquement
+    @OneToOne(mappedBy = "prestataire", cascade = CascadeType.ALL,fetch = FetchType.EAGER)
     private ConfigPrestataire configPrestataire;
 
     public Prestataire() {

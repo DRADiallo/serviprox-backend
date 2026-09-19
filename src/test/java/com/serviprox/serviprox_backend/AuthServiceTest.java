@@ -5,12 +5,12 @@ import com.serviprox.serviprox_backend.dto.AuthRequest;
 import com.serviprox.serviprox_backend.dto.AuthResponse;
 import com.serviprox.serviprox_backend.dto.RegisterClientRequest;
 import com.serviprox.serviprox_backend.entity.Client;
+import com.serviprox.serviprox_backend.entity.OtpCode;
 import com.serviprox.serviprox_backend.enums.RoleUtilisateur;
 import com.serviprox.serviprox_backend.enums.StatutActeur;
-import com.serviprox.serviprox_backend.repository.ActeurRepository;
-import com.serviprox.serviprox_backend.repository.ClientRepository;
-import com.serviprox.serviprox_backend.repository.PrestataireRepository;
+import com.serviprox.serviprox_backend.repository.*;
 import com.serviprox.serviprox_backend.service.AuthService;
+import com.serviprox.serviprox_backend.service.SmsService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -21,6 +21,7 @@ import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
+import java.util.Map;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -52,6 +53,19 @@ public class AuthServiceTest {
 
     @Mock
     private JwtUtils jwtUtils;
+
+    // ← AJOUT
+    @Mock
+    private OtpRepository otpRepository;
+
+    // ← AJOUT
+    @Mock
+    private SmsService smsService;
+
+    // ← AJOUT
+    @Mock
+    private AgentRepository agentRepository;
+
     // @InjectMocks → crée le vrai service
     // et injecte tous les @Mock dedans
     @InjectMocks
@@ -133,28 +147,48 @@ public class AuthServiceTest {
 
     }
 
-    // ═══ TEST 3 ═══
-    // Login avec bon mot de passe
-    // → doit retourner token + infos
-    @Test
-    void loginCrendentialsCorrectsDoitReussir(){
-        //GIVEN
-        AuthRequest request = new AuthRequest();
-        request.setEmail("abdou@test.com");
-        request.setMotDePasse("passer123");
-        client.setMotDePasse("motDePasseEncode");
+//
+// ═══ TEST 3 ═══
+// Login avec bon mot de passe
+// → doit retourner message OTP envoyé
+@Test
+void loginCrendentialsCorrectsDoitReussir(){
+    // GIVEN
+    AuthRequest request = new AuthRequest();
+    request.setEmail("abdou@test.com");
+    request.setMotDePasse("passer123");
+    // ← AJOUT : téléphone obligatoire maintenant
+    request.setTelephone("771234567");
+    client.setMotDePasse("motDePasseEncode");
+    // ← AJOUT : téléphone du client
+    client.setTelephone("771234567");
 
-        when(acteurRepository.findByEmail("abdou@test.com")).thenReturn(Optional.of(client));
-        when(passwordEncoder.matches("passer123","motDePasseEncode"))
-                .thenReturn(true);
-        when(jwtUtils.genererToken(anyLong(),anyString())).thenReturn("token-jwt-test");
-        // WHEN
-        AuthResponse response = authService.login(request);
-        //THEN
-        assertNotNull(response);
-        assertEquals("CLIENT",response.getRole());
-        assertEquals("abdou@test.com",response.getEmail());
-    }
+    when(acteurRepository.findByEmail(
+            "abdou@test.com"))
+            .thenReturn(Optional.of(client));
+    when(passwordEncoder.matches(
+            "passer123", "motDePasseEncode"))
+            .thenReturn(true);
+    when(jwtUtils.genererToken(
+            anyLong(), anyString()))
+            .thenReturn("token-jwt-test");
+
+    // ←AJOUT : mock OTP
+    when(otpRepository.save(any()))
+            .thenReturn(new OtpCode());
+
+    // WHEN
+    // ← CHANGEMENT : Map au lieu de AuthResponse
+    Map<String, String> response =
+            authService.login(request);
+
+    // THEN
+    assertNotNull(response);
+    // ← CHANGEMENT : vérifier message OTP
+    assertTrue(response.containsKey("message"));
+    assertTrue(response.get("message")
+            .contains("OTP envoyé"));
+}
     // ═══ TEST 4 ═══
     // Login avec mauvais mot de passe
     // → doit lancer une exception

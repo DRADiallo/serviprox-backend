@@ -5,15 +5,21 @@ import com.serviprox.serviprox_backend.dto.AuthRequest;
 import com.serviprox.serviprox_backend.dto.AuthResponse;
 import com.serviprox.serviprox_backend.dto.RegisterClientRequest;
 import com.serviprox.serviprox_backend.dto.RegisterPrestataireRequest;
+import com.serviprox.serviprox_backend.entity.Agent;
 import com.serviprox.serviprox_backend.entity.Client;
+import com.serviprox.serviprox_backend.entity.OtpCode;
 import com.serviprox.serviprox_backend.entity.Prestataire;
+import com.serviprox.serviprox_backend.enums.RoleUtilisateur;
 import com.serviprox.serviprox_backend.enums.StatutActeur;
-import com.serviprox.serviprox_backend.repository.ActeurRepository;
-import com.serviprox.serviprox_backend.repository.ClientRepository;
-import com.serviprox.serviprox_backend.repository.PrestataireRepository;
+import com.serviprox.serviprox_backend.repository.*;
+
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+
+import java.time.LocalDateTime;
+import java.util.Map;
+import java.util.Random;
 
 @Service
 @RequiredArgsConstructor
@@ -21,8 +27,14 @@ public class AuthService {
     private final ClientRepository clientRepository;
     private final PrestataireRepository prestataireRepository;
     private final ActeurRepository acteurRepository;
+    private final AgentRepository agentRepository;
+
     private final PasswordEncoder passwordEncoder;
     private final JwtUtils jwtUtils;
+
+    private final OtpRepository otpRepository;
+    private final SmsService smsService;
+    //private final PasswordEncoder passwordEncoder;
 
 
     public AuthResponse registerClient(RegisterClientRequest req){
@@ -46,7 +58,9 @@ public class AuthService {
                 client.getId(),
                 client.getNom(),
                 client.getPrenom(),
-                client.getEmail()
+                client.getEmail(),
+                client.getAdressePrincipale() != null
+                        ? client.getAdressePrincipale() : ""
         );
     }
 
@@ -74,30 +88,251 @@ public class AuthService {
                 p.getId(),
                 p.getNom(),
                 p.getPrenom(),
-                p.getEmail()
+                p.getEmail(),
+                p.getZoneCouverture() !=null ? p.getZoneCouverture():""
+
+
         );
 
 
     }
 
-    public AuthResponse login(AuthRequest req){
+    // ← MODIFICATION login()
+// Retourne un message au lieu du token
+// Le token sera retourné après vérification OTP
+    public Map<String, String> login(AuthRequest req) {
+
+        // 1. Vérifier email
         var acteur = acteurRepository
                 .findByEmail(req.getEmail())
-                .orElseThrow(()-> new RuntimeException("Email introuvable"));
+                .orElseThrow(() ->
+                        new RuntimeException(
+                                "Email introuvable"));
 
+        // 2. Vérifier mot de passe
         if (!passwordEncoder.matches(
-                req.getMotDePasse(), acteur.getMotDePasse())){
-            throw new RuntimeException("Mot de passe incorrect");
+                req.getMotDePasse(),
+                acteur.getMotDePasse())) {
+            throw new RuntimeException(
+                    "Mot de passe incorrect");
         }
+
+        // 3. Vérifier téléphone
+        if (!acteur.getTelephone().equals(
+                req.getTelephone())) {
+            throw new RuntimeException(
+                    "Numéro de téléphone incorrect");
+        }
+
+        // 4. Supprimer anciens OTPs
+        otpRepository.deleteByTelephone(
+                req.getTelephone());
+
+        // 5. Générer OTP à 6 chiffres
+        String otpClair = String.valueOf(
+                100000 + new Random().nextInt(900000));
+
+        // 6. Sauvegarder OTP hashé
+        OtpCode otp = new OtpCode();
+        otp.setTelephone(req.getTelephone());
+        otp.setCode(
+                passwordEncoder.encode(otpClair));
+        otp.setActeurId(acteur.getId());
+        // ← Expire dans 2 minutes
+        otp.setExpireAt(
+                LocalDateTime.now().plusMinutes(2));
+        otpRepository.save(otp);
+
+        // 7. Envoyer SMS
+        smsService.envoyerOtp(
+                req.getTelephone(), otpClair);
+
+        // 8. Retourner message
+        return Map.of(
+                "message",
+                "Code OTP envoyé au "
+                        + req.getTelephone(),
+                "telephone",
+                req.getTelephone()
+        );
+    }
+
+    // ← AJOUT : verifyOtp()
+// Étape 2 du login
+    public AuthResponse verifyOtp(
+            String telephone, String code) {
+
+        // 1. Chercher OTP non utilisé
+        OtpCode otp = otpRepository
+                .findByTelephoneAndUtiliseFalse(telephone)
+                .orElseThrow(() ->
+                        new RuntimeException(
+                                "Code OTP introuvable"));
+
+        // 2. Vérifier expiration
+        if (LocalDateTime.now().isAfter(
+                otp.getExpireAt())) {
+            throw new RuntimeException(
+                    "Code OTP expiré");
+        }
+
+        // 3. Vérifier code
+        if (!passwordEncoder.matches(
+                code, otp.getCode())) {
+            throw new RuntimeException(
+                    "Code OTP incorrect");
+        }
+
+        // 4. Marquer OTP comme utilisé
+        otp.setUtilise(true);
+        otpRepository.save(otp);
+
+        // 5. Charger l'acteur
+        var acteur = acteurRepository
+                .findById(otp.getActeurId())
+                .orElseThrow(() ->
+                        new RuntimeException(
+                                "Acteur introuvable"));
+
+        // 6. Retourner token JWT
+        String adresse = "";
+        if (acteur instanceof Client client) {
+            adresse = client
+                    .getAdressePrincipale() != null
+                    ? client.getAdressePrincipale()
+                    : "";
+        }
+
         return new AuthResponse(
-                jwtUtils.genererToken(acteur.getId(), acteur.getRole().name()),
+                jwtUtils.genererToken(
+                        acteur.getId(),
+                        acteur.getRole().name()),
                 acteur.getRole().name(),
                 acteur.getId(),
                 acteur.getNom(),
                 acteur.getPrenom(),
-                acteur.getEmail()
+                acteur.getEmail(),
+                adresse
         );
-
     }
+
+    public Map<String, String> resendOtp(
+            String telephone) {
+
+        // Supprimer ancien OTP
+        otpRepository.deleteByTelephone(telephone);
+
+        // Chercher l'acteur par téléphone
+        var acteur = acteurRepository
+                .findByTelephone(telephone)
+                .orElseThrow(() ->
+                        new RuntimeException(
+                                "Téléphone introuvable"));
+
+        // Générer nouveau OTP
+        String otpClair = String.valueOf(
+                100000 + new Random().nextInt(900000));
+
+        OtpCode otp = new OtpCode();
+        otp.setTelephone(telephone);
+        otp.setCode(
+                passwordEncoder.encode(otpClair));
+        otp.setActeurId(acteur.getId());
+        otp.setExpireAt(
+                LocalDateTime.now().plusMinutes(2));
+        otpRepository.save(otp);
+
+        smsService.envoyerOtp(telephone, otpClair);
+
+        return Map.of(
+                "message",
+                "Nouveau code envoyé au " + telephone);
+    }
+
+        // ═══════════════════════════════════════
+    // LOGIN AGENT
+    // ───────────────────────────────────────
+    // Login par téléphone + code PIN
+    // L'agent ne connaît pas son email
+    // → Prestataire lui communique son PIN
+    // ═══════════════════════════════════════
+        public AuthResponse loginAgent(
+                String telephone, String codePin) {
+
+        // 1. Chercher agent par téléphone
+        Agent agent = agentRepository
+                .findByTelephone(telephone)
+                .orElseThrow(() ->
+                        new RuntimeException(
+                                "Téléphone introuvable"));
+
+        // 2. Vérifier que c'est bien un agent
+        if (agent.getRole() !=
+                RoleUtilisateur.LIVREUR) {
+            throw new RuntimeException(
+                    "Ce compte n'est pas un agent");
+        }
+
+        // 3. Vérifier statut actif
+        if (agent.getStatut() !=
+                StatutActeur.ACTIF) {
+            throw new RuntimeException(
+                    "Compte agent inactif — "
+                            + "contactez votre prestataire");
+        }
+
+        // 4. Vérifier le code PIN
+        if (!passwordEncoder.matches(
+                codePin, agent.getCodePin())) {
+            throw new RuntimeException(
+                    "Code PIN incorrect");
+        }
+
+        // 5. Retourner token JWT
+        return new AuthResponse(
+                jwtUtils.genererToken(
+                        agent.getId(),
+                        agent.getRole().name()),
+                agent.getRole().name(),
+                agent.getId(),
+                agent.getNom(),
+                agent.getPrenom(),
+                agent.getEmail(),
+                // Zone du prestataire
+                agent.getPrestataire() != null
+                        ? agent.getPrestataire()
+                        .getZoneCouverture()
+                        : ""
+        );
+    }
+
+
+//    public AuthResponse login(AuthRequest req){
+//        var acteur = acteurRepository
+//                .findByEmail(req.getEmail())
+//                .orElseThrow(()-> new RuntimeException("Email introuvable"));
+//
+//        if (!passwordEncoder.matches(
+//                req.getMotDePasse(), acteur.getMotDePasse())){
+//            throw new RuntimeException("Mot de passe incorrect");
+//        }
+//
+//        //  : récupérer l'adresse selon le type
+//        String adresse = "";
+//        if (acteur instanceof Client client) {
+//            adresse = client.getAdressePrincipale() != null
+//                    ? client.getAdressePrincipale() : "";
+//        }
+//        return new AuthResponse(
+//                jwtUtils.genererToken(acteur.getId(), acteur.getRole().name()),
+//                acteur.getRole().name(),
+//                acteur.getId(),
+//                acteur.getNom(),
+//                acteur.getPrenom(),
+//                acteur.getEmail(),
+//                adresse
+//        );
+//
+//    }
 
 }

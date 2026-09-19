@@ -19,5 +19,8 @@ public class AgentDTO {
     private String positionActuelle;
     private Long prestataireId;
     private String statut;
-
+    //  AJOUT : PIN retourné une seule fois
+    // à la création pour que le prestataire
+    // puisse le transmettre à l'agent
+    private String codePinClair;
 }

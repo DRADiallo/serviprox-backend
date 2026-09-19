@@ -7,6 +7,8 @@ import com.serviprox.serviprox_backend.enums.RoleUtilisateur;
 import com.serviprox.serviprox_backend.enums.StatutActeur;
 import com.serviprox.serviprox_backend.repository.AgentRepository;
 import com.serviprox.serviprox_backend.repository.PrestataireRepository;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import java.util.Random;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -18,6 +20,7 @@ import java.util.stream.Collectors;
 public class AgentService {
     private final AgentRepository agentRepository;
     private final PrestataireRepository prestataireRepository;
+    private final PasswordEncoder passwordEncoder;
 
     // ═══ CREATE ═══
     // Seul le prestataire peut créer un agent
@@ -28,6 +31,11 @@ public class AgentService {
         Prestataire prestataire = prestataireRepository
                 .findById(prestataireId)
                 .orElseThrow(()-> new RuntimeException("Prestataire introuvable"));
+
+        // ← AJOUT : Générer PIN à 6 chiffres
+        // Ex: "482917"
+        String pinClair = genererPin();
+        String pinHash  = passwordEncoder.encode(pinClair);
 
         Agent agent= new Agent();
         agent.setNom(dto.getNom());
@@ -41,8 +49,26 @@ public class AgentService {
         agent.setRole(RoleUtilisateur.LIVREUR);
         // Statut Actif par defaut
         agent.setStatut(StatutActeur.ACTIF);
+        // ← Mot de passe = PIN hashé
+        agent.setMotDePasse(pinHash);
+        // ← AJOUT : stocker PIN hashé
+        agent.setCodePin(pinHash);
+        Agent saved = agentRepository.save(agent);
 
-        return  toDTO(agentRepository.save(agent));
+        // ← Retourner le PIN en clair UNE SEULE FOIS
+        // Pour que le prestataire le transmette
+        // à l'agent (SMS, WhatsApp...)
+        AgentDTO result = toDTO(saved);
+        result.setCodePinClair(pinClair);
+        return result;
+
+    }
+    //  Générateur PIN
+    private String genererPin() {
+        // Génère un nombre entre 100000 et 999999
+        int pin = 100000 +
+                new Random().nextInt(900000);
+        return String.valueOf(pin);
     }
 
     // ═══ READ ALL-Agents ═══

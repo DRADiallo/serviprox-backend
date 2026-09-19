@@ -24,6 +24,12 @@ public class Agent extends Acteur{
 
     @Column
     private String positionActuelle;
+    // AJOUT : code PIN pour connexion
+    // Généré automatiquement par le prestataire
+    // Envoyé par SMS à l'agent
+    @Column
+    private String codePin;
+
 
     // Prestataire auquel l'agent appartient
     @ManyToOne

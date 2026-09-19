@@ -9,4 +9,8 @@ public interface ActeurRepository extends JpaRepository<Acteur , Long> {
     Optional<Acteur> findByEmail(String email);
     boolean existsByEmail(String email);
     boolean existsByTelephone(String telephone);
+    //  AJOUT : chercher par téléphone
+    // Pour le login OTP et resendOtp
+    Optional<Acteur> findByTelephone(
+            String telephone);
 }
