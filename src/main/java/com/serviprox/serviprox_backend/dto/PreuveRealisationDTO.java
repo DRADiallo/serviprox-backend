@@ -15,4 +15,9 @@ public class PreuveRealisationDTO {
     private String type;
     private String contenu;
     private LocalDateTime date;
+
+    // Ajout
+    private Long acteurId;
+    private String statut;
+    private String commentaire;
 }

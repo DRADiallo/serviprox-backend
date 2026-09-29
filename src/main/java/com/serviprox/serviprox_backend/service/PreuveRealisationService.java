@@ -1,12 +1,15 @@
 package com.serviprox.serviprox_backend.service;
 
 import com.serviprox.serviprox_backend.dto.PreuveRealisationDTO;
+import com.serviprox.serviprox_backend.entity.Commande;
 import com.serviprox.serviprox_backend.entity.PreuveRealisation;
+import com.serviprox.serviprox_backend.enums.StatutPreuve;
 import com.serviprox.serviprox_backend.enums.TypePreuve;
 import com.serviprox.serviprox_backend.repository.CommandeRepository;
 import com.serviprox.serviprox_backend.repository.PreuveRealisationRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -37,39 +40,37 @@ public class PreuveRealisationService{
     //             sur l'écran du téléphone de l'agent
     //             Remplace le bon papier souvent perdu
 
-    public PreuveRealisationDTO ajouterPreuve( Long commandeId, String typePreuve,String contenuUrl, Long agentId){
+    @Transactional
+    public PreuveRealisationDTO ajouterPreuve(
+            Long commandeId,
+            String typePreuve,
+            String photoBase64,
+            Long acteurId,
+            String statut,
+            String commentaire) {
 
-        var commande = commandeRepository
+        Commande commande = commandeRepository
                 .findById(commandeId)
-                .orElseThrow(()-> new RuntimeException("Commande Introuvable"));
+                .orElseThrow(() ->
+                        new RuntimeException(
+                                "Commande introuvable"));
 
-        // Vérifier que le type est valide
-        // PHOTO, VIDEO ou SIGNATURE
+        TypePreuve type =
+                TypePreuve.valueOf(typePreuve);
 
-        TypePreuve type;
-        try {
-            type = TypePreuve.valueOf(typePreuve);
-        } catch (IllegalArgumentException e) {
-            throw new RuntimeException("Type de preuve invalide :"+ typePreuve+ "veuillez utiliser PHOTO, VIDEOou SIGNATURE");
-
-        }
-
-        PreuveRealisation preuve= new PreuveRealisation();
+        PreuveRealisation preuve =
+                new PreuveRealisation();
         preuve.setCommande(commande);
         preuve.setType(type);
-        preuve.setContenu(contenuUrl);
-        preuve.setDate(LocalDateTime.now());
+        preuve.setContenu(photoBase64);
+        preuve.setActeurId(acteurId);
+        preuve.setStatut(
+                statut != null
+                        ? StatutPreuve.valueOf(statut)
+                        : StatutPreuve.OK);
+        preuve.setCommentaire(commentaire);
 
-        PreuveRealisation saved = preuveRealisationRepository.save(preuve);
-
-        notificationService.envoyer(
-                commande.getClient().getId(),
-                "PREUVE_AJOUTEE",
-                "Une preuve a été ajoutée"
-                + "pour votre commande #:"+ commandeId
-                + "Veuillez verifier et valider ! "
-        );
-         return toDTO(saved);
+        return toDTO(preuveRealisationRepository.save(preuve));
     }
 
         // ═══ READ BY ID ═══
@@ -85,13 +86,14 @@ public class PreuveRealisationService{
         // Flutter affiche la preuve au client
         // pour qu'il puisse valider ou contester
 
-        public  PreuveRealisationDTO getByCommande(Long commandeId){
-
-        return toDTO(preuveRealisationRepository
+    public List<PreuveRealisationDTO> getByCommande(
+            Long commandeId) {
+        return preuveRealisationRepository
                 .findByCommandeId(commandeId)
-                .orElseThrow(()-> new RuntimeException("Aucune preuve pour"+ "cette commande")));
-        }
-
+                .stream()
+                .map(this::toDTO)
+                .collect(Collectors.toList());
+    }
         // ═══ READ ALL ═══
         // Utilisé par AdminService pour supervision
 
@@ -172,16 +174,27 @@ public class PreuveRealisationService{
     }
 
     // ═══ MAPPER entité → DTO ═══
-    public PreuveRealisationDTO toDTO(PreuveRealisation pR){
+    public PreuveRealisationDTO toDTO(
+            PreuveRealisation pR) {
 
-        PreuveRealisationDTO dto= new PreuveRealisationDTO();
+        PreuveRealisationDTO dto =
+                new PreuveRealisationDTO();
         dto.setId(pR.getId());
-        dto.setType(pR.getType() !=null? pR.getType().name():null);
+        dto.setType(pR.getType() != null
+                ? pR.getType().name() : null);
         dto.setContenu(pR.getContenu());
         dto.setDate(pR.getDate());
-        if (pR.getCommande() !=null)
-            dto.setCommandeId(pR.getCommande().getId());
-       return dto;
+        if (pR.getCommande() != null)
+            dto.setCommandeId(
+                    pR.getCommande().getId());
+
+        // ← AJOUT : nouveaux champs
+        dto.setActeurId(pR.getActeurId());
+        dto.setStatut(pR.getStatut() != null
+                ? pR.getStatut().name() : "OK");
+        dto.setCommentaire(pR.getCommentaire());
+
+        return dto;
     }
 
 
@@ -204,121 +217,4 @@ public class PreuveRealisationService{
 
 
 
-//import com.serviprox.serviprox_backend.entity.PreuveRealisation;
-//import com.serviprox.serviprox_backend.enums.TypePreuve;
-//import com.serviprox.serviprox_backend.repository.CommandeRepository;
-//import com.serviprox.serviprox_backend.repository.PreuveRealisationRepository;
-//import lombok.RequiredArgsConstructor;
-//import org.springframework.stereotype.Service;
-//
-//import java.time.LocalDateTime;
-//import java.util.Optional;
-//
-//@Service
-//@RequiredArgsConstructor
-//public class PreuveRealisationService {
-//    private final PreuveRealisationRepository preuveRealisationRepository;
-//    private final CommandeRepository commandeRepository;
-//    private final NotificationService notificationService;
-//
-//    /**
-//     * Ajouter une preuve de réalisation
-//     *
-//     * Contexte sénégalais — 3 types de preuves :
-//     *
-//     * PHOTO → Pressing : photos articles collectés/livrés
-//     *         Soins    : photo du travail effectué
-//     *         Réparation : photo avant/après réparation
-//     *
-//     * VIDEO → Réparation si client absent :
-//     *         Technicien filme l'appareil réparé
-//     *         qui fonctionne correctement
-//     *         Envoyée via WhatsApp ou l'application
-//     *
-//     * SIGNATURE → Signature numérique du client
-//     *             sur l'écran du téléphone de l'agent
-//     *             Remplace le bon papier souvent perdu
-//     */
-//
-//    public PreuveRealisation ajouterPreuve(Long commandeId,String typePreuve,String contenuURL,Long agentId){
-//
-//        var commande = commandeRepository
-//                .findById(commandeId)
-//                .orElseThrow(()-> new RuntimeException("Commande introuvable"));
-//
-//
-//        // Creeons la preuve
-//        PreuveRealisation preuve = new PreuveRealisation();
-//        preuve.setCommande(commande);
-//
-//        //// Type : PHOTO, VIDEO ou SIGNATURE
-//        preuve.setType(TypePreuve.valueOf(typePreuve));
-//
-//       // URL
-//        preuve.setContenu(contenuURL);
-//
-//        // Horodatage — crucial pour les litiges pour la photo
-//        preuve.setDate(LocalDateTime.now());
-//
-//        PreuveRealisation saved = preuveRealisationRepository.save(preuve);
-//
-//        // Notifier le client
-//        // Il peut voir la preuve dans l'application
-//        notificationService.envoyer(commande.getClient().getId(),"PREUVE_AJOUTEE","📸 Une preuve a été ajoutée pour "+"votre commande "+commandeId+"Vérifiez et validez");
-//
-//        return saved;
-//    }
-//
-//    /**
-//     * Comparer bon de collecte et bon de livraison
-//     *
-//     * Innovation principale du pressing ServiProx !
-//     *
-//     * Problème réel à Dakar :
-//     * "J'ai donné 5 chemises, on m'en rend 4"
-//     * "Mon bazin est revenu avec une tache"
-//     *
-//     * Solution :
-//     * 1. À la collecte : agent photographie chaque article
-//     *    → Bon de collecte avec photos + signature client
-//     *
-//     * 2. À la livraison : agent photographie chaque article
-//     *    → Bon de livraison avec photos + signature client
-//     *
-//     * 3. Système compare les deux bons automatiquement
-//     *    → Si écart détecté : litige automatique
-//     *    → Si identiques : commande clôturée
-//     */
-//
-//    public boolean comparerBons(Long commandeId , String urlBonCollecte, String urlBonLivraison){
-//        var commande = commandeRepository
-//                .findById(commandeId)
-//                .orElseThrow(()-> new RuntimeException("Command introuvable "));
-//
-//        // Dans un système complet : Analyse IA des métadonnées des photos
-//        // (nombre d'articles, couleurs, état...)
-//        // Version simplifiée actuelle :  Comparaison des URLs des bons générés
-//
-//        boolean shamesIdentiques= urlBonCollecte.equals(urlBonLivraison);
-//
-//        if (!shamesIdentiques){
-//            // Écart détecté → alerter le prestataire
-//            notificationService.envoyer(commande.getPrestataire().getId(),"ECART_DETECTE","⚠️ Écart détecté entre le bon " + "de collecte et le bon de livraison "
-//                    + "pour la commande #" + commandeId  + ". Vérifiez immédiatement.");
-//
-//            // Alerter aussi le client
-//            notificationService.envoyer(commande.getClient().getId(),"ECART_DETECTE", "⚠️ Un écart a été détecté dans " + "votre commande #" + commandeId + " Un litige a été ouvert");
-//        }
-//        return  shamesIdentiques;
-//    }
-//
-//    /**
-//     * Récupérer la preuve d'une commande
-//     *
-//     * Flutter affiche la preuve au client
-//     * pour qu'il puisse valider ou contester
-//     */
-//    public Optional<PreuveRealisation> getByCommande(Long commandeId){
-//        return preuveRealisationRepository.findByCommandeId(commandeId);
-//    }
-//}
+

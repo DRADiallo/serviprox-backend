@@ -7,6 +7,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/agent")
@@ -108,6 +109,24 @@ public class AgentController {
         AgentDTO agent = agentService.getById(agentId);
         return ResponseEntity.ok(agentService.getPositionActuelle(agentId));
     }
+
+    // GET /api/agent/{id}/pin
+// Prestataire voir le PIN de son agent
+    @GetMapping("/{id}/pin")
+    public ResponseEntity<Map<String, String>>voirPin(@PathVariable Long id) {
+        return ResponseEntity.ok(
+                agentService.getPinClair(id));
+    }
+
+    // PUT /api/agent/{id}/reset-pin
+    // Prestataire réinitialise le PIN
+    @PutMapping("/{id}/reset-pin")
+    public ResponseEntity<Map<String, String>>resetPin(@PathVariable Long id) {
+        return ResponseEntity.ok(
+                agentService.resetPin(id));
+    }
+
+
 
 
 

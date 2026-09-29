@@ -31,11 +31,18 @@ public class Affectation {
     @Column
     private String zoneGeographique;
 
+    // : type d'affectation
+    // COLLECTE → agent va chercher chez client
+    // LIVRAISON → agent livre chez client
+    @Column
+    private String typeAffectation;
+
+
     @ManyToOne
-    @JoinColumn(name = "livreur_id")
+    @JoinColumn(name = "agentLivreur_id")
     private Agent agent;
 
-    @OneToOne
+    @ManyToOne
     @JoinColumn(name = "commande_id")
     private Commande commande;
 }

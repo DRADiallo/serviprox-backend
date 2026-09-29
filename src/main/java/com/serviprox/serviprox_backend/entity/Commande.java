@@ -65,15 +65,19 @@ public class Commande {
     private List<EvenementSuivi> evenementsSuivi;
 
     // Preuve de réalisation
-    @OneToOne(mappedBy = "commande", cascade = CascadeType.ALL)
-    private PreuveRealisation preuveRealisation;
+    @OneToMany(mappedBy = "commande", cascade = CascadeType.ALL)
+    private List<PreuveRealisation> preuves;
 
     // Devis (optionnel)
     @OneToOne(mappedBy = "commande", cascade = CascadeType.ALL)
     private Devis devis;
 
     // Affectation Livreur
-    @OneToOne(mappedBy = "commande", cascade = CascadeType.ALL)
-    private Affectation affectation;
+    //OneToMany
+    // car 2 affectations possibles (collecte + livraison)
+    @OneToMany(mappedBy = "commande", cascade = CascadeType.ALL)
+    private List<Affectation> affectations;
 
+    @OneToOne(mappedBy = "commande", cascade = CascadeType.ALL)
+    private VerificationCollecte verificationCollecte;
 }

@@ -151,13 +151,11 @@ public class AuthController {
     // }
     // ═══════════════════════════════════════
     @PostMapping("/login/agent")
-    public ResponseEntity<AuthResponse>
+    public ResponseEntity<Map<String, String>>
     loginAgent(
-            @RequestParam String telephone,
-            @RequestParam String codePin) {
+            @RequestParam String telephone) {
         return ResponseEntity.ok(
-                authService.loginAgent(
-                        telephone, codePin));
+                authService.loginAgent(telephone));
     }
 }
 

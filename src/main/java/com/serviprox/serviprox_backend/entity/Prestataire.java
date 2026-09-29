@@ -6,11 +6,14 @@ import com.serviprox.serviprox_backend.enums.StatutActeur;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;
+import lombok.EqualsAndHashCode;
 
 import java.util.List;
 
 @Entity
 @Data
+@EqualsAndHashCode(callSuper = false, exclude = {"configPrestataire",
+                "commandes", "agents"})
 @Table(name = "prestataires")
 @DiscriminatorValue("PRESTATAIRE")
 @AllArgsConstructor

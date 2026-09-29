@@ -12,4 +12,6 @@ public interface AgentRepository extends JpaRepository<Agent,Long> {
     //  AJOUT : chercher agent par téléphone
     Optional<Agent> findByTelephone(
             String telephone);
+    // ← Vérifier si téléphone existe
+    boolean existsByTelephone(String telephone);
 }

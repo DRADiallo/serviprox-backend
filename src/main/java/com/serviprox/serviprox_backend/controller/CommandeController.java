@@ -21,9 +21,9 @@ public class CommandeController {
     // POST /api/commande/client/{clientId}
     // Client passe une commande
     @PostMapping("/client/{clientId}")
-    public ResponseEntity<CommandeDTO> creer (@PathVariable Long clienId, @RequestBody CommandeRequest req){
+    public ResponseEntity<CommandeDTO> creer (@PathVariable Long clientId, @RequestBody CommandeRequest req){
 
-        return ResponseEntity.ok(commandeService.creerCommande(clienId,req));
+        return ResponseEntity.ok(commandeService.creerCommande(clientId,req));
     }
 
     // GET /api/commande/{id}
@@ -84,5 +84,12 @@ public class CommandeController {
         return  ResponseEntity.ok(commandeService.annuler(id,acteurId));
     }
 
-
+    //  : assigner agent
+    // PUT /api/commande/{id}/assigner-agent
+    @PutMapping("/{id}/assigner-agent")
+    public ResponseEntity<CommandeDTO> assignerAgent(@PathVariable Long id, @RequestParam Long agentId,@RequestParam String typeAffectation) {
+        return ResponseEntity.ok(
+                commandeService.assignerAgent(
+                        id, agentId,typeAffectation));
+    }
 }

@@ -16,6 +16,7 @@ import com.serviprox.serviprox_backend.repository.*;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.Map;
@@ -100,7 +101,16 @@ public class AuthService {
     // ← MODIFICATION login()
 // Retourne un message au lieu du token
 // Le token sera retourné après vérification OTP
+    @Transactional
     public Map<String, String> login(AuthRequest req) {
+
+        // ← AJOUT : normaliser le téléphone
+        // Enlever l'indicatif +221 si présent
+        String telephoneNormalise = req.getTelephone()
+                .replaceAll("\\+221", "")  // enlever +221
+                .replaceAll("\\s", "")     // enlever espaces
+                .trim();
+        // Comparer avec le téléphone en base
 
         // 1. Vérifier email
         var acteur = acteurRepository
@@ -120,6 +130,11 @@ public class AuthService {
         // 3. Vérifier téléphone
         if (!acteur.getTelephone().equals(
                 req.getTelephone())) {
+            throw new RuntimeException(
+                    "Numéro de téléphone incorrect");
+        }
+        if (!acteur.getTelephone().equals(
+                telephoneNormalise)) {
             throw new RuntimeException(
                     "Numéro de téléphone incorrect");
         }
@@ -216,8 +231,8 @@ public class AuthService {
         );
     }
 
-    public Map<String, String> resendOtp(
-            String telephone) {
+    @Transactional
+    public Map<String, String> resendOtp (String telephone) {
 
         // Supprimer ancien OTP
         otpRepository.deleteByTelephone(telephone);
@@ -250,60 +265,57 @@ public class AuthService {
     }
 
         // ═══════════════════════════════════════
-    // LOGIN AGENT
-    // ───────────────────────────────────────
-    // Login par téléphone + code PIN
-    // L'agent ne connaît pas son email
-    // → Prestataire lui communique son PIN
-    // ═══════════════════════════════════════
-        public AuthResponse loginAgent(
-                String telephone, String codePin) {
+        // LOGIN AGENT
+        // ───────────────────────────────────────
+        // Login par téléphone + code PIN
+        // L'agent ne connaît pas son email
+        // → Prestataire lui communique son PIN
+        // ═══════════════════════════════════════
+        // ← MODIFICATION : loginAgent()
+        // Étape 1 : téléphone seulement → envoie OTP
 
-        // 1. Chercher agent par téléphone
-        Agent agent = agentRepository
-                .findByTelephone(telephone)
-                .orElseThrow(() ->
-                        new RuntimeException(
-                                "Téléphone introuvable"));
+    @Transactional
+    public Map<String, String> loginAgent(String telephone) {
 
-        // 2. Vérifier que c'est bien un agent
-        if (agent.getRole() !=
-                RoleUtilisateur.LIVREUR) {
-            throw new RuntimeException(
-                    "Ce compte n'est pas un agent");
-        }
+            // 1. Chercher agent par téléphone
+            Agent agent = agentRepository
+                    .findByTelephone(telephone)
+                    .orElseThrow(() ->
+                            new RuntimeException(
+                                    "Téléphone introuvable"));
 
-        // 3. Vérifier statut actif
-        if (agent.getStatut() !=
-                StatutActeur.ACTIF) {
-            throw new RuntimeException(
-                    "Compte agent inactif — "
-                            + "contactez votre prestataire");
-        }
+            // 2. Vérifier statut actif
+            if (agent.getStatut() !=
+                    StatutActeur.ACTIF) {
+                throw new RuntimeException(
+                        "Compte agent inactif");
+            }
 
-        // 4. Vérifier le code PIN
-        if (!passwordEncoder.matches(
-                codePin, agent.getCodePin())) {
-            throw new RuntimeException(
-                    "Code PIN incorrect");
-        }
+            // 3. Supprimer anciens OTPs
+            otpRepository.deleteByTelephone(telephone);
 
-        // 5. Retourner token JWT
-        return new AuthResponse(
-                jwtUtils.genererToken(
-                        agent.getId(),
-                        agent.getRole().name()),
-                agent.getRole().name(),
-                agent.getId(),
-                agent.getNom(),
-                agent.getPrenom(),
-                agent.getEmail(),
-                // Zone du prestataire
-                agent.getPrestataire() != null
-                        ? agent.getPrestataire()
-                        .getZoneCouverture()
-                        : ""
-        );
+            // 4. Générer OTP
+            String otpClair = String.valueOf(
+                    100000 + new Random().nextInt(900000));
+
+            // 5. Sauvegarder OTP hashé
+            OtpCode otp = new OtpCode();
+            otp.setTelephone(telephone);
+            otp.setCode(
+                    passwordEncoder.encode(otpClair));
+            otp.setActeurId(agent.getId());
+            otp.setExpireAt(
+                    LocalDateTime.now().plusMinutes(2));
+            otpRepository.save(otp);
+
+            // 6. Envoyer OTP par SMS
+            smsService.envoyerOtp(telephone, otpClair);
+
+            return Map.of(
+                    "message",
+                    "Code OTP de cet Agent est  envoyé au " + telephone,
+                    "telephone", telephone
+            );
     }
 
 

@@ -129,9 +129,25 @@ public class AffectationService{
 
     public AffectationDTO getByCommande(Long commandeId){
 
-        return toDTO(affectationRepository.findByCommandeId(commandeId)
-                .orElseThrow(()-> new RuntimeException("Aucune affectation pour cette commande #"+commandeId)));
+
+        List<Affectation> affectations = affectationRepository
+                        .findByCommandeId(commandeId);
+
+        if (affectations.isEmpty()) {
+            throw new RuntimeException(
+                    "Aucune affectation pour "
+                            + "cette commande #" + commandeId);
+        }
+
+        return toDTO(affectations.get(0));
     }
+
+
+
+
+//        return toDTO(affectationRepository.findByCommandeId(commandeId)
+//                .orElseThrow(()-> new RuntimeException("Aucune affectation pour cette commande #"+commandeId)));
+
 
     // ═══ UPDATE STATUT AFFECTATION ═══
     // Statuts possibles :

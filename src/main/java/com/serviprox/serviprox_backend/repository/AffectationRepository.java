@@ -8,5 +8,10 @@ import java.util.Optional;
 
 public interface AffectationRepository extends JpaRepository<Affectation,Long> {
     List<Affectation> findByAgentId(Long agentId);
-    Optional<Affectation> findByCommandeId(Long commandeId);
+    List<Affectation> findByCommandeId(Long commandeId);
+    //  chercher par type
+    Optional<Affectation>
+    findByCommandeIdAndTypeAffectation(
+            Long commandeId,
+            String typeAffectation);
 }

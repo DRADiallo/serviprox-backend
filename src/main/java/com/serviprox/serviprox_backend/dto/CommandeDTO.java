@@ -14,6 +14,13 @@ public class CommandeDTO {
     private String motDepot;
     private String nomPrestataire;
     private String nomClient;
+    private String telephoneClient;
+    private Long agentCollecteId;
+    private String nomAgentCollecte;
+    private String telephoneAgentCollecte;
+    private Long agentLivraisonId;
+    private String nomAgentLivraison;
+    private String telephoneAgentLivraison;
     private List<LigneCommandeDTO>lignes;
 
 }

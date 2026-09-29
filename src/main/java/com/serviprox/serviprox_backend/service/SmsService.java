@@ -26,5 +26,28 @@ public class SmsService {
                 "║  Expire dans  : 2 minutes    ║");
         log.info(
                 "╚══════════════════════════════╝");
+
+
+    }
+    // ← AJOUT : log PIN agent
+    public void loggerPinAgent(
+            String telephone,
+            String nom,
+            String pinClair) {
+
+        log.info(
+                "╔══════════════════════════════╗");
+        log.info(
+                "║  AGENT CRÉÉ — CODE PIN       ║");
+        log.info(
+                "║  Nom    : {}           ║", nom);
+        log.info(
+                "║  Tel    : {}      ║", telephone);
+        log.info(
+                "║  PIN    : {}          ║", pinClair);
+        log.info(
+                "║  → Communiquer à l'agent     ║");
+        log.info(
+                "╚══════════════════════════════╝");
     }
 }
