@@ -2,6 +2,7 @@ package com.serviprox.serviprox_backend.controller;
 
 
 import com.serviprox.serviprox_backend.dto.AffectationDTO;
+import com.serviprox.serviprox_backend.dto.CommandeDTO;
 import com.serviprox.serviprox_backend.service.AffectationService;
 import lombok.RequiredArgsConstructor;
 import org.apache.catalina.LifecycleState;
@@ -74,7 +75,29 @@ public class AffectationController {
         return ResponseEntity.ok().build();
     }
 
+    // ← AJOUT : Agent confirme/refuse mission
+    @PutMapping("/commande/{commandeId}/confirmer")
+    public ResponseEntity<AffectationDTO>
+    confirmerMission(@PathVariable Long commandeId, @RequestParam Long agentId, @RequestParam String decision) {
 
+        return ResponseEntity.ok(
+                affectationService.confirmerMission(
+                        commandeId, agentId, decision));
+    }
+
+    // ← AJOUT : Missions d'un agent
+//    @GetMapping("/agent/{agentId}")
+//    public ResponseEntity<List<AffectationDTO>> getMissionsAgent(@PathVariable Long agentId) {
+//
+//        return ResponseEntity.ok(affectationService.getMissionsAgent(agentId));
+//    }
+
+    // en - attente
+    @GetMapping("/agent/{agentId}/en-attente")
+    public ResponseEntity<List<AffectationDTO>>
+    getMissionsEnAttente(@PathVariable Long agentId) {
+        return ResponseEntity.ok(affectationService.getMissionsEnAttente(agentId));
+    }
 
 
 

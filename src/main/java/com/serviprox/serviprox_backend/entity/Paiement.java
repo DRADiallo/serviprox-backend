@@ -31,9 +31,28 @@ public class Paiement {
     @Column
     private LocalDateTime datePaiement;
 
+    // ← AJOUT : capture Wave/Orange/Free
+    @Column(columnDefinition = "TEXT")
+    private String captureEcranBase64;
+
+    // ← AJOUT : référence transaction
+    @Column
+    private String referenceTransaction;
+
+    // ← AJOUT : confirmation double
+    // Client confirme avoir payé
+    @Column
+    private Boolean confirmeClient = false;
+
+    // Prestataire confirme avoir reçu
+    @Column
+    private Boolean confirmePrestataire = false;
+
+    @Column
+    private LocalDateTime  dateConfirmation;
+
     @OneToOne
     @JoinColumn(name = "commande_id")
     private Commande commande;
-
 
 }

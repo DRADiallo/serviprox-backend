@@ -92,4 +92,45 @@ public class CommandeController {
                 commandeService.assignerAgent(
                         id, agentId,typeAffectation));
     }
+
+    // ← AJOUT : Prestataire fixe prix réel
+// PUT /api/commande/{id}/fixer-prix
+    @PutMapping("/{id}/fixer-prix")
+    public ResponseEntity<CommandeDTO>
+    fixerPrixReel(
+            @PathVariable Long id,
+            @RequestParam Double prixPrestations,
+            @RequestParam(required = false,
+                    defaultValue = "0")
+            Double prixCollecte,
+            @RequestParam(required = false,
+                    defaultValue = "0")
+            Double prixLivraison,
+            @RequestParam(required = false)
+            String detailPrix,
+            @RequestParam Long acteurId) {
+
+        return ResponseEntity.ok(
+                commandeService.fixerPrixReel(
+                        id,
+                        prixPrestations,
+                        prixCollecte,
+                        prixLivraison,
+                        detailPrix,
+                        acteurId));
+    }
+
+    // ← AJOUT : Client accepte/refuse prix réel
+// PUT /api/commande/{id}/accepter-prix
+    @PutMapping("/{id}/accepter-prix")
+    public ResponseEntity<CommandeDTO>
+    accepterPrix(
+            @PathVariable Long id,
+            @RequestParam String decision,
+            @RequestParam Long acteurId) {
+
+        return ResponseEntity.ok(
+                commandeService.accepterPrix(
+                        id, decision, acteurId));
+    }
 }

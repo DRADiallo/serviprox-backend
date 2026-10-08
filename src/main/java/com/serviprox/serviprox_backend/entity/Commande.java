@@ -39,6 +39,29 @@ public class Commande {
     @Column(columnDefinition = "TEXT")
     private String configData;
 
+    // Saisie par le client lors de la commande
+    @Column(columnDefinition = "TEXT")
+    private String descriptionColis;
+
+    @Column
+    private Double prixParTypePrestations = 0.0;
+
+    // Prix course collecte
+    @Column
+    private Double prixCourseCollecte = 0.0;
+
+    // Prix course livraison
+    @Column
+    private Double prixCourseLivraison = 0.0;
+
+    // Client a accepté le prix réel
+    @Column
+    private Boolean prixAccepteClient = false;
+
+    // Détail prix réel en JSON
+    @Column(columnDefinition = "TEXT")
+    private String detailPrixReel;
+
     @ManyToOne
     @JoinColumn(name = "client_id", nullable = false)
     private Client client;

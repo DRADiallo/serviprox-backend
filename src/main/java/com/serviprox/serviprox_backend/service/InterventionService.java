@@ -159,26 +159,32 @@ public class InterventionService {
 
         // Logique selon le type d intervention
 
-        if ("COLLECTE".equals(typeIntervention)){
-            // Pressing : collecte terminée
-            // → passer en EN_LIVRAISON pour le traitement
-            commande.setStatutCommande(StatutCommande.EN_LIVRAISON);
+        if ("COLLECTE".equals(typeIntervention)) {
+            // ← Collecte terminée
+            // → EN_VERIFICATION (prestataire vérifie)
+            // pas EN_LIVRAISON directement !
+            commande.setStatutCommande(
+                    StatutCommande.EN_VERIFICATION);
 
-            notificationService.envoyer(commande.getClient().getId(),"COLLECTE_TERMINEE",
-                    " Collecte terminée ! "
-                            + "Votre linge est en cours de traitement."
-            );
+            notificationService.envoyer(
+                    commande.getClient().getId(),
+                    "COLLECTE_TERMINEE",
+                    "✅ Collecte terminée ! "
+                            + "Le prestataire vérifie "
+                            + "vos articles.");
 
-        }else {
-            // Livraison, Réparation ou Soins terminés
-            // → TERMINEE, en attente validation client
-            commande.setStatutCommande(StatutCommande.TERMINEE);
+        } else {
+            // ← Livraison/Réparation/Soins terminés
+            // → VERIFICATION_FINALE
+            // pas TERMINEE (supprimé !)
+            commande.setStatutCommande(
+                    StatutCommande.VERIFICATION_FINALE);
 
-            notificationService.envoyer(commande.getClient().getId(),"INTERVENTION_TERMINEE",
-                    " Prestation terminée ! "
-                            + "Veuillez valider et évaluer le service."
-            );
-
+            notificationService.envoyer(
+                    commande.getClient().getId(),
+                    "INTERVENTION_TERMINEE",
+                    "✅ Prestation terminée ! "
+                            + "Veuillez vérifier et valider.");
         }
         commandeRepository.save(commande);
         return  toDTO(intervention);

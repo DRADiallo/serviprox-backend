@@ -11,7 +11,11 @@ public interface AffectationRepository extends JpaRepository<Affectation,Long> {
     List<Affectation> findByCommandeId(Long commandeId);
     //  chercher par type
     Optional<Affectation>
-    findByCommandeIdAndTypeAffectation(
-            Long commandeId,
-            String typeAffectation);
+    findByCommandeIdAndTypeAffectation(Long commandeId, String typeAffectation);
+
+    Optional<Affectation>
+    findByCommandeIdAndAgentId(Long commandeId, Long agentId);
+    List<Affectation> findByAgentIdAndStatut(Long agentId, String statut);
+
+
 }

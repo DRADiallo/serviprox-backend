@@ -259,6 +259,7 @@ public class AgentService {
     }
 
 
+
     // ═══ DÉSACTIVER ═══
     // On ne supprime jamais un agent
     // Ses affectations et historique sont conservés

@@ -19,5 +19,13 @@ public class AffectationDTO {
     private Integer ordrePassage;
     private String zoneGeographique;
 
+    private String typeAffectation;
+    private String nomClient;
+    private String telephoneClient;
+    private String descriptionColis;
+    private String motDepot;
+    private Double montantTotal;
+    private String nomPrestataire;
+
 
 }

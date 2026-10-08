@@ -1,6 +1,7 @@
 package com.serviprox.serviprox_backend.service;
 
 import com.serviprox.serviprox_backend.dto.AffectationDTO;
+import com.serviprox.serviprox_backend.dto.CommandeDTO;
 import com.serviprox.serviprox_backend.entity.Affectation;
 import com.serviprox.serviprox_backend.entity.Agent;
 import com.serviprox.serviprox_backend.entity.Commande;
@@ -9,7 +10,9 @@ import com.serviprox.serviprox_backend.repository.AffectationRepository;
 import com.serviprox.serviprox_backend.repository.AgentRepository;
 import com.serviprox.serviprox_backend.repository.CommandeRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -210,25 +213,140 @@ public class AffectationService{
         affectationRepository.deleteById(id);
     }
 
+    // ← AJOUT : Agent confirme ou refuse mission
+    @Transactional
+    public AffectationDTO confirmerMission(Long commandeId, Long agentId, String decision) {
+
+        // Trouver affectation
+        Affectation affectation =
+                affectationRepository
+                        .findByCommandeIdAndAgentId(
+                                commandeId, agentId)
+                        .orElseThrow(() ->
+                                new RuntimeException(
+                                        "Mission introuvable"));
+
+        Commande commande =
+                commandeRepository
+                        .findById(commandeId)
+                        .orElseThrow(() ->
+                                new RuntimeException(
+                                        "Commande introuvable"));
+
+        if ("CONFIRMER".equals(decision)) {
+            // ← Agent accepte
+            affectation.setStatut("CONFIRMEE");
+            affectationRepository.save(affectation);
+
+            // ← Notifier prestataire
+            notificationService.envoyer(
+                    commande.getPrestataire().getId(),
+                    "MISSION_CONFIRMEE",
+                    "L'agent " +
+                            affectation.getAgent().getPrenom()
+                            + " a confirmé la mission #"
+                            + commandeId);
+
+        } else if ("REFUSER".equals(decision)) {
+            // ← Agent refuse
+            affectation.setStatut("REFUSEE");
+            affectationRepository.save(affectation);
+
+            // ← Libérer l'agent
+            affectation.getAgent()
+                    .setDisponibilite(true);
+            agentRepository.save(
+                    affectation.getAgent());
+
+            // ← Notifier prestataire
+            notificationService.envoyer(
+                    commande.getPrestataire().getId(),
+                    "MISSION_REFUSEE",
+                    "L'agent " +
+                            affectation.getAgent().getPrenom()
+                            + " a refusé la mission #"
+                            + commandeId
+                            + ". Assignez un autre agent !");
+        }
+
+        return toDTO(affectation);
+    }
+    // ← Missions d'un agent
+    public List<AffectationDTO> getMissionsAgent(
+            Long agentId) {
+        return affectationRepository
+                .findByAgentId(agentId)
+                .stream()
+                .map(this::toDTO)
+                .collect(Collectors.toList());
+    }
+    // ← Missions en attente
+    public List<AffectationDTO> getMissionsEnAttente(
+            Long agentId) {
+        return affectationRepository
+                .findByAgentIdAndStatut(
+                        agentId, "EN_ATTENTE")
+                .stream()
+                .map(this::toDTO)
+                .collect(Collectors.toList());
+    }
+
+
     // ═══ MAPPER entité → DTO ═══
     public AffectationDTO toDTO(Affectation a) {
         AffectationDTO dto = new AffectationDTO();
         dto.setId(a.getId());
-        dto.setDateAffectation(a.getDateAffectation());
+        dto.setStatut(a.getStatut());
         dto.setOrdrePassage(a.getOrdrePassage());
-        dto.setZoneGeographique(a.getZoneGeographique());
-        // On expose uniquement les IDs
-        // pas les objets complets
-        // pour éviter les boucles infinies
+        dto.setZoneGeographique(
+                a.getZoneGeographique());
+        dto.setDateAffectation(
+                a.getDateAffectation());
+        dto.setTypeAffectation(
+                a.getTypeAffectation());
+
+        // ← Agent
         if (a.getAgent() != null) {
             dto.setAgentId(a.getAgent().getId());
             dto.setNomAgent(
-                    a.getAgent().getNom()
-                            + " " + a.getAgent().getPrenom());
+                    a.getAgent().getPrenom()
+                            + " " + a.getAgent().getNom());
         }
-        if (a.getCommande() != null)
+
+        // ← Commande
+        if (a.getCommande() != null) {
             dto.setCommandeId(
                     a.getCommande().getId());
+            dto.setMontantTotal(
+                    a.getCommande().getMontantTotal());
+            dto.setMotDepot(
+                    a.getCommande().getModeDepot() != null
+                            ? a.getCommande().getModeDepot()
+                            .name() : null);
+            dto.setDescriptionColis(
+                    a.getCommande().getDescriptionColis());
+
+            // Client
+            if (a.getCommande().getClient() != null) {
+                dto.setNomClient(
+                        a.getCommande().getClient()
+                                .getPrenom()
+                                + " "
+                                + a.getCommande().getClient()
+                                .getNom());
+                dto.setTelephoneClient(
+                        a.getCommande().getClient()
+                                .getTelephone());
+            }
+
+            // Prestataire
+            if (a.getCommande().getPrestataire()
+                    != null) {
+                dto.setNomPrestataire(
+                        a.getCommande().getPrestataire()
+                                .getNomCommercial());
+            }
+        }
 
         return dto;
     }

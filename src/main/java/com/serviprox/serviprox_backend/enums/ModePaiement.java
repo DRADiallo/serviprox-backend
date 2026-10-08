@@ -4,6 +4,6 @@ public enum ModePaiement {
     ESPECES,
     WAVE,
     ORANGE_MONEY,
-    YAS,
-    CB
+    // ← CORRECTION : underscore !
+    FREE_MONEY
 }

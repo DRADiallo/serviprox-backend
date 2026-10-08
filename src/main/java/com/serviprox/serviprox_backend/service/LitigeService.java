@@ -48,10 +48,15 @@ public class LitigeService {
 
         // Un litige n'est possible que si la prestation est terminée On ne peut pas contester avant la fin !
 
-        if (commande.getStatutCommande()!= StatutCommande.TERMINEE){
-            throw new RuntimeException("Litige impossible : "
-                    + "la commande n'est pas encore terminée"+
-                    commande.getLignesCommande());
+        if (commande.getStatutCommande() !=
+                StatutCommande.VERIFICATION_FINALE &&
+                commande.getStatutCommande() !=
+                        StatutCommande.EN_VERIFICATION &&
+                commande.getStatutCommande() !=
+                        StatutCommande.EN_LIVRAISON) {
+            throw new RuntimeException(
+                    "Litige impossible à cette étape : "
+                            + commande.getStatutCommande().name());
         }
 
         // Sauvegarder l'ancien statut pour l'historique

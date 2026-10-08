@@ -21,6 +21,7 @@ public class CommandeDTO {
     private Long agentLivraisonId;
     private String nomAgentLivraison;
     private String telephoneAgentLivraison;
+    private String descriptionColis;
     private List<LigneCommandeDTO>lignes;
 
 }

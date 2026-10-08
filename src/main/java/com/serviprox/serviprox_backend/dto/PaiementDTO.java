@@ -15,4 +15,10 @@ public class PaiementDTO {
     private String mode;
     private String statut;
     private LocalDateTime datePaiement;
+
+    private String captureEcranBase64;
+    private String referenceTransaction;
+    private Boolean confirmeClient;
+    private Boolean confirmePrestataire;
+    private LocalDateTime dateConfirmation;
 }

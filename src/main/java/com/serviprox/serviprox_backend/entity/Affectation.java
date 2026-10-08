@@ -23,7 +23,7 @@ public class Affectation {
     private LocalDateTime dateAffectation = LocalDateTime.now();
 
     @Column
-    private String statut;
+    private String statut = "EN_ATTENTE";
 
     @Column
     private Integer ordrePassage;
@@ -36,6 +36,7 @@ public class Affectation {
     // LIVRAISON → agent livre chez client
     @Column
     private String typeAffectation;
+
 
 
     @ManyToOne

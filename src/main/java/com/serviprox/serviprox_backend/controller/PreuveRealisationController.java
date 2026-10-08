@@ -8,7 +8,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 import java.util.List.*;
-
+import java.util.Map;
 
 
 @RestController
@@ -23,17 +23,11 @@ public class PreuveRealisationController {
     // POST /api/preuve/commande/{commandeId}
     @PostMapping("/commande/{commandeId}")
     public ResponseEntity<PreuveRealisationDTO> ajouterPreuve(@PathVariable Long commandeId, @RequestParam String typePreuve,
-            //  CHANGEMENT : contenuUrl → photoBase64
-            @RequestParam(required = false)
-            String photoBase64,
-            // ← CHANGEMENT : agentId → acteurId
-            @RequestParam Long acteurId,
-            // ← AJOUT
-            @RequestParam(required = false,
-                    defaultValue = "OK")
-            String statut,
-            @RequestParam(required = false)
-            String commentaire) {
+            @RequestParam Long acteurId, @RequestParam(required = false, defaultValue = "OK")
+            String statut, @RequestParam(required = false) String commentaire, @RequestBody(required = false) Map<String, String> body) {
+
+        String photoBase64 = body != null
+                ? body.get("photoBase64") : null;
 
         return ResponseEntity.ok(
                 preuveRealisationService.ajouterPreuve(

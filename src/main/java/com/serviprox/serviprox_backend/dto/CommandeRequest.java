@@ -10,4 +10,5 @@ public class CommandeRequest {
     private String modeDepot;
     private String typeService;
     private List<LigneCommandeRequest>lignes;
+    private String descriptionColis;
 }

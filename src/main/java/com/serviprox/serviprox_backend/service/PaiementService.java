@@ -9,6 +9,7 @@ import com.serviprox.serviprox_backend.repository.CommandeRepository;
 import com.serviprox.serviprox_backend.repository.PaiementRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -27,42 +28,129 @@ public class PaiementService {
     //
     // Contexte sénégalais — 3 modes :
     // ESPECES      → paiement cash (très fréquent)
-    // MOBILE_MONEY → Wave, Orange Money (populaire)
-    // CARTE        → moins fréquent
+    // MOBILE_MONEY → Wave, Orange Money , Free (populaire)
 
-    public PaiementDTO creerPaiement(Long commandeId, Double montant, String modePaiement) {
+
+    // ← FIX 1 : creerPaiement
+    // Ajouter capture + référence
+    @Transactional
+    public PaiementDTO creerPaiement(Long commandeId, Double montant, String modePaiement,
+            String captureBase64,
+            String reference) {
 
         var commande = commandeRepository
                 .findById(commandeId)
-                .orElseThrow(() -> new RuntimeException("Commande Introuvable"));
+                .orElseThrow(() ->
+                        new RuntimeException(
+                                "Commande introuvable"));
 
-        // Vérifions qu'il n'y a pas déjà
-        // un paiement pour cette commande
         paiementRepository
                 .findByCommandeId(commandeId)
                 .ifPresent(p -> {
-                    throw new RuntimeException("Un paiement existe déjà " + "pour cette commande");
-
+                    throw new RuntimeException(
+                            "Paiement déjà existant !");
                 });
-        // Vérifier mode paiement valide
+
         ModePaiement mode;
         try {
             mode = ModePaiement.valueOf(modePaiement);
         } catch (IllegalArgumentException e) {
-            throw new RuntimeException("Mode de paiement invalide:" + modePaiement);
+            throw new RuntimeException(
+                    "Mode invalide: " + modePaiement);
         }
 
         Paiement paiement = new Paiement();
         paiement.setCommande(commande);
         paiement.setMontant(montant);
         paiement.setMode(mode);
-        // EN_ATTENTE → paiement initié
-        // pas encore confirmé
-
         paiement.setStatut(StatutPaiement.EN_ATTENTE);
+        // ← AJOUT
+        paiement.setCaptureEcranBase64(captureBase64);
+        paiement.setReferenceTransaction(reference);
+        // ← Client confirme avoir payé
+        paiement.setConfirmeClient(true);
 
-        return toDTO(paiementRepository.save(paiement));
+        Paiement saved =
+                paiementRepository.save(paiement);
+
+        // ← Passer statut PAIEMENT_RECU
+        commande.setStatutCommande(
+                StatutCommande.EN_LIVRAISON);
+        commandeRepository.save(commande);
+
+        // ← Notifier prestataire
+        notificationService.envoyer(
+                commande.getPrestataire().getId(),
+                "PAIEMENT_RECU",
+                "Paiement de " + montant
+                        + " FCFA reçu via " + modePaiement
+                        + " — Commande #" + commandeId
+                        + ". Veuillez confirmer la réception !");
+
+        return toDTO(saved);
     }
+
+    // ← FIX 2 : getByCommande
+    // findByCommandeId au lieu de findById !
+    public PaiementDTO getByCommande(Long commandeId) {
+        return toDTO(paiementRepository
+                .findByCommandeId(commandeId)
+                .orElseThrow(() ->
+                        new RuntimeException(
+                                "Paiement introuvable")));
+    }
+
+    // ← FIX 3 : confirmerPaiement (Prestataire)
+    // Passe EN_LIVRAISON pas CLOTUREE !
+    @Transactional
+    public PaiementDTO confirmerPaiement(Long id) {
+
+        Paiement paiement = paiementRepository
+                .findById(id)
+                .orElseThrow(() ->
+                        new RuntimeException(
+                                "Paiement introuvable"));
+
+        // ← Prestataire confirme
+        paiement.setConfirmePrestataire(true);
+        paiement.setStatut(StatutPaiement.EFFECTUE);
+        paiement.setDatePaiement(
+                LocalDateTime.now());
+        paiement.setDateConfirmation(
+                LocalDateTime.now());
+
+        Paiement saved =
+                paiementRepository.save(paiement);
+
+        // ← Passer EN_LIVRAISON
+        // (pas CLOTUREE directement !)
+        var commande = paiement.getCommande();
+        commande.setStatutCommande(
+                StatutCommande.EN_LIVRAISON);
+        commandeRepository.save(commande);
+
+        // ← Notifier client
+        notificationService.envoyer(
+                commande.getClient().getId(),
+                "PAIEMENT_CONFIRME",
+                "Votre paiement a été confirmé ! "
+                        + "Votre commande #"
+                        + commande.getId()
+                        + " est en cours de livraison.");
+
+        // ← Notifier prestataire
+        notificationService.envoyer(
+                commande.getPrestataire().getId(),
+                "PAIEMENT_CONFIRME",
+                "Paiement commande #"
+                        + commande.getId()
+                        + " confirmé ! Assignez un agent "
+                        + "pour la livraison.");
+
+        return toDTO(saved);
+    }
+
+    /////////////////////////////////////////NEW /////////////////////////////////////////////
     // ═══ READ ALL ═══
     public List<PaiementDTO>getAll(){
 
@@ -71,6 +159,9 @@ public class PaiementService {
                 .map(this::toDTO)
                 .collect(Collectors.toList());
     }
+
+
+
 
     // ═══ READ BY ID ═══
     public PaiementDTO getById(Long id){
@@ -82,52 +173,52 @@ public class PaiementService {
     }
 
     // ═══ READ BY COMMANDE ═══
-    public PaiementDTO getByCommande(Long commandeId){
-
-        return  toDTO(paiementRepository
-                .findById(commandeId)
-                .orElseThrow(()->new RuntimeException("Paiement Introuvable")));
-
-    }
+//    public PaiementDTO getByCommande(Long commandeId){
+//
+//        return  toDTO(paiementRepository
+//                .findById(commandeId)
+//                .orElseThrow(()->new RuntimeException("Paiement Introuvable")));
+//
+//    }
     // ═══ CONFIRMER PAIEMENT ═══
     // Séparée de getByCommande()
 
-    public PaiementDTO confirmerPaiement(Long id){
-
-        Paiement paiement= paiementRepository
-                .findById(id)
-                .orElseThrow(()-> new RuntimeException("Paiement Introuvable"));
-        paiement.setStatut(StatutPaiement.EFFECTUE);
-        paiement.setDatePaiement(LocalDateTime.now());
-        Paiement saved= paiementRepository.save(paiement);
-
-        // Clôturer la commande
-        var commande = paiement.getCommande();
-        commande.setStatutCommande(StatutCommande.CLOTUREE);
-        commandeRepository.save(commande);
-
-        // Notifier le prestataire
-        // Argent libéré !
-        notificationService.envoyer(
-                commande.getPrestataire().getId(),
-                "PAIEMENT_CONFIRME",
-                "Paiement de"
-                        + paiement.getCommande()
-                        +"FCFA confirmé "
-                        +" - Commande # "+ commande.getId()
-
-        );
-        //Notifier le Client
-
-        notificationService.envoyer(
-                commande.getClient().getId(),
-                "COMMANDE_CLOTUREE",
-                "Votre commande " + commande.getId()
-                        +" est clôturée. Merci !"
-        );
-
-        return toDTO(saved);
-    }
+//    public PaiementDTO confirmerPaiement(Long id){
+//
+//        Paiement paiement= paiementRepository
+//                .findById(id)
+//                .orElseThrow(()-> new RuntimeException("Paiement Introuvable"));
+//        paiement.setStatut(StatutPaiement.EFFECTUE);
+//        paiement.setDateConfirmation(LocalDateTime.now());
+//        Paiement saved= paiementRepository.save(paiement);
+//
+//        // Clôturer la commande
+//        var commande = paiement.getCommande();
+//        commande.setStatutCommande(StatutCommande.CLOTUREE);
+//        commandeRepository.save(commande);
+//
+//        // Notifier le prestataire
+//        // Argent libéré !
+//        notificationService.envoyer(
+//                commande.getPrestataire().getId(),
+//                "PAIEMENT_CONFIRME",
+//                "Paiement de"
+//                        + paiement.getCommande()
+//                        +"FCFA confirmé "
+//                        +" - Commande # "+ commande.getId()
+//
+//        );
+//        //Notifier le Client
+//
+//        notificationService.envoyer(
+//                commande.getClient().getId(),
+//                "COMMANDE_CLOTUREE",
+//                "Votre commande " + commande.getId()
+//                        +" est clôturée. Merci !"
+//        );
+//
+//        return toDTO(saved);
+//    }
 
     // ═══ REMBOURSER ═══
     // En cas de litige résolu
@@ -163,7 +254,7 @@ public class PaiementService {
                 ? p.getMode().name() : null);
         dto.setStatut(p.getStatut() != null
                 ? p.getStatut().name() : null);
-        dto.setDatePaiement(p.getDatePaiement());
+        dto.setDatePaiement(p.getDateConfirmation());
         if (p.getCommande() != null)
             dto.setCommandeId(
                     p.getCommande().getId());

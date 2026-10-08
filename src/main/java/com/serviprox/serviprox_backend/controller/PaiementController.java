@@ -21,9 +21,24 @@ public class PaiementController {
     // ESPECES, MOBILE_MONEY
 
     @PostMapping("/commande/{commandeId}")
-    public ResponseEntity<PaiementDTO>creer(@PathVariable Long commandeId, @RequestParam Double montant, @RequestParam String modePaiement){
+    public ResponseEntity<PaiementDTO> creer(@PathVariable Long commandeId, @RequestParam Double montant, @RequestParam String modePaiement, @RequestParam(required = false)
+            String captureBase64,
+            @RequestParam(required = false)
+            String reference) {
 
-        return ResponseEntity.ok(paiementService.creerPaiement(commandeId,montant,modePaiement));
+        return ResponseEntity.ok(
+                paiementService.creerPaiement(
+                        commandeId, montant,
+                        modePaiement,
+                        captureBase64, reference));
+    }
+
+    @PutMapping("/{id}/confirmer-prestataire")
+    public ResponseEntity<PaiementDTO>
+    confirmerPrestataire(@PathVariable Long id) {
+
+        return ResponseEntity.ok(
+                paiementService.confirmerPaiement(id));
     }
 
     // GET /api/paiement/commande/{commandeId}
