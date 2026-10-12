@@ -27,6 +27,7 @@ public class AffectationService{
     private final AgentRepository agentRepository;
     private final CommandeRepository commandeRepository;
     private  final  NotificationService notificationService;
+    private final FcmService fcmService;
 
     // ═══ CREATE — Affecter un agent à une commande ═══
 
@@ -238,6 +239,25 @@ public class AffectationService{
             affectation.setStatut("CONFIRMEE");
             affectationRepository.save(affectation);
 
+            fcmService.envoyerNotification(
+                    commande.getPrestataire().getId(),
+                    "✅ Mission acceptée !",
+                    affectation.getAgent().getPrenom()
+                            + " a accepté la mission #"
+                            + commandeId
+                            + ". En route pour la collecte !",
+                    "MISSION_ACCEPTEE");
+
+
+            // Notifier client aussi
+            fcmService.envoyerNotification(
+                    commande.getClient().getId(),
+                    "🛵 Agent en route !",
+                    affectation.getAgent().getPrenom()
+                            + " est en route pour "
+                            + "collecter vos articles !",
+                    "AGENT_EN_ROUTE");
+
             // ← Notifier prestataire
             notificationService.envoyer(
                     commande.getPrestataire().getId(),
@@ -257,6 +277,16 @@ public class AffectationService{
                     .setDisponibilite(true);
             agentRepository.save(
                     affectation.getAgent());
+
+            // Si REFUSER :
+            fcmService.envoyerNotification(
+                    commande.getPrestataire().getId(),
+                    "⚠️ Mission refusée !",
+                    affectation.getAgent().getPrenom()
+                            + " a refusé la mission #"
+                            + commandeId
+                            + ". Assignez un autre agent !",
+                    "MISSION_REFUSEE");
 
             // ← Notifier prestataire
             notificationService.envoyer(

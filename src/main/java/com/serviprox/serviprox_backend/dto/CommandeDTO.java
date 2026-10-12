@@ -23,5 +23,12 @@ public class CommandeDTO {
     private String telephoneAgentLivraison;
     private String descriptionColis;
     private List<LigneCommandeDTO>lignes;
+    // Ajout
+    private Double prixParTypePrestations;
+    private Double prixCourseCollecte;
+    private Double prixCourseLivraison;
+    private String detailPrixReel;
+    private Boolean prixAccepteClient;
+
 
 }

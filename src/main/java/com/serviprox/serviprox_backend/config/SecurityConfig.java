@@ -97,8 +97,12 @@ public class SecurityConfig {
                         .requestMatchers("/api/verification/**")
                         .hasAnyRole("CLIENT", "PRESTATAIRE", "LIVREUR", "ADMIN")
 
+                        // ← AJOUT après /api/verification/**
+                        .requestMatchers("/api/notification/**")
+                        .authenticated()
+
                         .requestMatchers("/api/paiement/**")
-                        .hasAnyRole("CLIENT", "PRESTATAIRE", "ADMIN")
+                        .hasAnyRole("CLIENT", "PRESTATAIRE","AGENT", "LIVREUR", "ADMIN")
 
                         // ══ TOUS AUTHENTIFIÉS ══
                         .anyRequest().authenticated()

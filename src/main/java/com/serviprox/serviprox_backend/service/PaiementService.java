@@ -21,6 +21,8 @@ public class PaiementService {
     private final PaiementRepository paiementRepository;
     private final CommandeRepository commandeRepository;
     private final NotificationService notificationService;
+    private final FcmService fcmService;
+
 
     // ═══ CREATE ═══
     // Créer un paiement après validation
@@ -73,6 +75,16 @@ public class PaiementService {
         Paiement saved =
                 paiementRepository.save(paiement);
 
+        fcmService.envoyerNotification(
+                commande.getPrestataire().getId(),
+                "💰 Paiement reçu !",
+                "Le client a payé "
+                        + montant + " FCFA via "
+                        + modePaiement
+                        + " — Commande #" + commandeId
+                        + ". Veuillez confirmer !",
+                "PAIEMENT_RECU");
+
         // ← Passer statut PAIEMENT_RECU
         commande.setStatutCommande(
                 StatutCommande.EN_LIVRAISON);
@@ -119,8 +131,17 @@ public class PaiementService {
         paiement.setDateConfirmation(
                 LocalDateTime.now());
 
-        Paiement saved =
-                paiementRepository.save(paiement);
+        Paiement saved = paiementRepository.save(paiement);
+        fcmService.envoyerNotification(
+                paiement.getCommande().getClient().getId(),
+                "✅ Paiement confirmé !",
+                "Votre paiement a été confirmé "
+                        + "par le prestataire. "
+                        + "Commande #"
+                        + paiement.getCommande().getId(),
+                "PAIEMENT_CONFIRME");
+
+
 
         // ← Passer EN_LIVRAISON
         // (pas CLOTUREE directement !)

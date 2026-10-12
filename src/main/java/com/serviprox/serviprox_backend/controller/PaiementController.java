@@ -7,6 +7,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/paiement")
@@ -21,10 +22,18 @@ public class PaiementController {
     // ESPECES, MOBILE_MONEY
 
     @PostMapping("/commande/{commandeId}")
-    public ResponseEntity<PaiementDTO> creer(@PathVariable Long commandeId, @RequestParam Double montant, @RequestParam String modePaiement, @RequestParam(required = false)
-            String captureBase64,
+    public ResponseEntity<PaiementDTO> creer(
+            @PathVariable Long commandeId,
+            @RequestParam Double montant,
+            @RequestParam String modePaiement,
             @RequestParam(required = false)
-            String reference) {
+            String reference,
+            // ← AJOUT body
+            @RequestBody(required = false)
+            Map<String, String> body) {
+
+        String captureBase64 = body != null
+                ? body.get("captureBase64") : null;
 
         return ResponseEntity.ok(
                 paiementService.creerPaiement(

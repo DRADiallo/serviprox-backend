@@ -25,6 +25,7 @@ public class CommandeService{
     private final AgentRepository agentRepository;
     private final AffectationRepository affectationRepository;
     private final NotificationService notificationService;
+    private final FcmService fcmService;
 
 
     // ═══ CREATE ═══
@@ -86,6 +87,15 @@ public class CommandeService{
             commande.setMontantTotal(totalprix);
         }
         Commande saved = commandeRepository.save(commande);
+
+        fcmService.envoyerNotification(
+                saved.getPrestataire().getId(),
+                "🔔 Nouvelle commande !",
+                "Client " + client.getPrenom()
+                        + " " + client.getNom()
+                        + " a passé une commande #"
+                        + saved.getId(),
+                "NOUVELLE_COMMANDE");
 
         // Enregistrer événement de création
         evenementSuiviService.enregistrer(
@@ -192,6 +202,141 @@ public class CommandeService{
 
         c.setStatutCommande(nouveauStatut);
         commandeRepository.save(c);
+
+        if (nouveauStatut == StatutCommande.CONFIRMEE) {
+            // → CLIENT notifié
+            fcmService.envoyerNotification(
+                    c.getClient().getId(),
+                    "✅ Commande confirmée !",
+                    "Votre commande #" + id
+                            + " a été confirmée par "
+                            + c.getPrestataire().getNomCommercial(),
+                    "COMMANDE_CONFIRMEE");
+        }
+
+        if (nouveauStatut == StatutCommande.EN_COLLECTE) {
+            // → CLIENT notifié
+            fcmService.envoyerNotification(
+                    c.getClient().getId(),
+                    " Agent en route !",
+                    "L'agent est en route pour "
+                            + "collecter vos articles. "
+                            + "Commande #" + id,
+                    "EN_COLLECTE");
+        }
+        if (nouveauStatut ==
+                StatutCommande.EN_VERIFICATION) {
+            // → CLIENT notifié
+            fcmService.envoyerNotification(
+                    c.getClient().getId(),
+                    " Articles bien reçus !",
+                    "Le prestataire a reçu vos articles. "
+                            + "Évaluation en cours... "
+                            + "Commande #" + id,
+                    "ARTICLES_RECUS");
+        }
+
+        if (nouveauStatut ==
+                StatutCommande.EN_TRAITEMENT) {
+            // → CLIENT notifié
+            fcmService.envoyerNotification(
+                    c.getClient().getId(),
+                    "✅ Prix accepté !",
+                    "Votre commande #" + id
+                            + " est en cours de traitement.",
+                    "EN_TRAITEMENT");
+        }
+
+        if (nouveauStatut ==
+                StatutCommande.TRAITEMENT_TERMINE) {
+            // → CLIENT notifié
+            fcmService.envoyerNotification(
+                    c.getClient().getId(),
+                    " Articles prêts !!!",
+                    "Vos articles sont prêts ! "
+                            + "Effectuez le paiement "
+                            + "pour la commande #" + id,
+                    "TRAITEMENT_TERMINE");
+        }
+
+        if (nouveauStatut ==
+                StatutCommande.EN_LIVRAISON) {
+            // → CLIENT notifié
+            fcmService.envoyerNotification(
+                    c.getClient().getId(),
+                    "🛵 Livraison en route !",
+                    "Vos articles sont en cours "
+                            + "de livraison. Commande #" + id,
+                    "EN_LIVRAISON");
+        }
+
+        if (nouveauStatut ==
+                StatutCommande.VERIFICATION_FINALE) {
+            // → CLIENT notifié
+            fcmService.envoyerNotification(
+                    c.getClient().getId(),
+                    "📦 Articles livrés !",
+                    "Vos articles ont été livrés ! "
+                            + "Vérifiez et confirmez "
+                            + "la commande #" + id,
+                    "VERIFICATION_FINALE");
+            // → PRESTATAIRE notifié
+            fcmService.envoyerNotification(
+                    c.getPrestataire().getId(),
+                    "✅ Livraison effectuée !",
+                    "L'agent a livré la commande #"
+                            + id + ". En attente client.",
+                    "LIVRAISON_EFFECTUEE");
+        }
+
+        if (nouveauStatut == StatutCommande.CLOTUREE) {
+            // → PRESTATAIRE notifié
+            fcmService.envoyerNotification(
+                    c.getPrestataire().getId(),
+                    " Commande clôturée !",
+                    "La commande #" + id
+                            + " a été clôturée avec succès !",
+                    "COMMANDE_CLOTUREE");
+            // → CLIENT notifié
+            fcmService.envoyerNotification(
+                    c.getClient().getId(),
+                    " Merci pour votre confiance !",
+                    "Votre commande #" + id
+                            + " est clôturée. "
+                            + "À bientôt sur ServiProx !",
+                    "COMMANDE_CLOTUREE");
+        }
+
+        if (nouveauStatut == StatutCommande.ANNULEE) {
+            // → CLIENT notifié
+            fcmService.envoyerNotification(
+                    c.getClient().getId(),
+                    "❌ Commande refusée !",
+                    "Votre commande #" + id
+                            + " a été refusée. "
+                            + "Essayez un autre prestataire.",
+                    "COMMANDE_ANNULEE");
+        }
+
+        if (nouveauStatut == StatutCommande.LITIGE) {
+            // → CLIENT notifié
+            fcmService.envoyerNotification(
+                    c.getClient().getId(),
+                    "⚠️ Litige ouvert !",
+                    "Un litige a été ouvert "
+                            + "sur votre commande #" + id
+                            + ". Nous vous contactons.",
+                    "LITIGE_OUVERT");
+            // → PRESTATAIRE notifié
+            fcmService.envoyerNotification(
+                    c.getPrestataire().getId(),
+                    "⚠️ Litige ouvert !",
+                    "Un litige a été ouvert "
+                            + "sur la commande #" + id
+                            + ". Contactez le client.",
+                    "LITIGE_OUVERT");
+        }
+
 
         // ← REMPLACER les 2 anciens blocs par :
         // Agent collecte libéré après réception
@@ -359,7 +504,7 @@ public class CommandeService{
         notificationService.envoyer(
                 agent.getId(),
                 "NOUVELLE_MISSION",
-                "🛵 Nouvelle mission " + typeAffectation
+                " Nouvelle mission " + typeAffectation
                         + " ! Commande #" + commandeId
                         + " — Client : "
                         + commande.getClient().getPrenom()
@@ -418,6 +563,16 @@ public class CommandeService{
 
         commandeRepository.save(commande);
 
+        fcmService.envoyerNotification(
+                commande.getClient().getId(),
+                " Prix réel fixé !",
+                "Votre commande #" + commandeId
+                        + " a été évaluée selon les vos prestatations commandez. "
+                        + "Montant total : "
+                        + commande.getMontantTotal()
+                        + " FCFA. Acceptez ou refusez !",
+                "PRIX_FIXE");
+
         // ← Notifier le client
         notificationService.envoyer(
                 commande.getClient().getId(),
@@ -455,6 +610,13 @@ public class CommandeService{
             // ← Client accepte → EN_TRAITEMENT
             commande.setPrixAccepteClient(true);
             commandeRepository.save(commande);
+            fcmService.envoyerNotification(
+                    commande.getPrestataire().getId(),
+                    "✅ Prix accepté !",
+                    "Le client a accepté le prix. "
+                            + "Commande #" + commandeId
+                            + " en traitement.",
+                    "PRIX_ACCEPTE");
 
             // ← Passer EN_TRAITEMENT
             return actuliserStatut(
@@ -463,10 +625,29 @@ public class CommandeService{
                     acteurId);
 
         } else {
-            // ← Client refuse → LITIGE
+            // ← Client refuse → ANNULEE
+            // ← Notifier prestataire
+            fcmService.envoyerNotification(
+                    commande.getPrestataire().getId(),
+                    "❌ Prix refusé !",
+                    "Le client a refusé le prix "
+                            + "proposé. Commande #"
+                            + commandeId + " annulée.",
+                    "PRIX_REFUSE");
+
+            // ← Notifier client
+            fcmService.envoyerNotification(
+                    commande.getClient().getId(),
+                    "❌ Commande annulée",
+                    "Votre commande #" + commandeId
+                            + " a été annulée suite "
+                            + "au refus du prix. "
+                            + "Désolé pour la gêne.",
+                    "COMMANDE_ANNULEE");
+
             return actuliserStatut(
                     commandeId,
-                    "LITIGE",
+                    "ANNULEE",
                     acteurId);
         }
     }
@@ -493,6 +674,17 @@ public class CommandeService{
                 + " " + c.getClient().getPrenom());
         dto.setTelephoneClient(
                 c.getClient().getTelephone());
+
+        dto.setDescriptionColis(c.getDescriptionColis());
+        dto.setPrixParTypePrestations(
+                c.getPrixParTypePrestations());
+        dto.setPrixCourseCollecte(
+                c.getPrixCourseCollecte());
+        dto.setPrixCourseLivraison(
+                c.getPrixCourseLivraison());
+        dto.setDetailPrixReel(c.getDetailPrixReel());
+        dto.setPrixAccepteClient(
+                c.getPrixAccepteClient());
 
         // ← AJOUT : infos agents via affectations
         if (c.getAffectations() != null) {
