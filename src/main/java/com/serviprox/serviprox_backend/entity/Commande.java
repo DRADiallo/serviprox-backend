@@ -25,14 +25,28 @@ public class Commande {
     @Column(nullable = false)
     private LocalDateTime dateCommande = LocalDateTime.now();
 
-    // ← CHAMP STATUT AJOUTÉ
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private StatutCommande statutCommande = StatutCommande.CREE;
 
-    // Mode de dépôt choisi
+    // ─── MODE DE DÉPÔT ──────────────────────────────────────────────────
+    // Valeur libre choisie par le client depuis champsCommande JSON (Couche 2)
+    // Ex : "Collecte domicile", "Dépôt atelier (livraison)", etc.
     @Column
     private String modeDepot;
+
+    // ─── ÉTAPE COURANTE DU WORKFLOW ──────────────────────────────────────
+    // Étape métier en cours, lue depuis ConfigurationService.etapes (Couche 2)
+    // null → commande pas encore EN_COURS (CREE ou CONFIRMEE)
+    //
+    // pressing   : "collecte" | "traitement" | "livraison"
+    // reparation : "diagnostic" | "reparation" | "restitution"
+    // soins      : "reservation" | "intervention" | "validation"
+    //
+    // Flutter l'affiche avec le label humain correspondant.
+    // Le prestataire/agent avance l'étape via avancerEtape().
+    @Column
+    private String etapeCourante;
 
     // Données de configuration en JSON
     @Column(columnDefinition = "TEXT")
@@ -94,9 +108,7 @@ public class Commande {
     @OneToOne(mappedBy = "commande", cascade = CascadeType.ALL)
     private Devis devis;
 
-    // Affectation Livreur
-    //OneToMany
-    // car 2 affectations possibles (collecte + livraison)
+    // Affectation Livreur (2 possibles : collecte + livraison)
     @OneToMany(mappedBy = "commande", cascade = CascadeType.ALL)
     private List<Affectation> affectations;
 

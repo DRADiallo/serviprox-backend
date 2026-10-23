@@ -11,7 +11,10 @@ public class CommandeDTO {
     private String statut;
     private Double montantTotal;
     private LocalDate dateCommande;
-    private String motDepot;
+
+    // ─── modeDepot (était "motDepot" — corrigé) ─────────────────────────
+    private String modeDepot;
+
     private String nomPrestataire;
     private String nomClient;
     private String telephoneClient;
@@ -22,15 +25,17 @@ public class CommandeDTO {
     private String nomAgentLivraison;
     private String telephoneAgentLivraison;
     private String descriptionColis;
-    private List<LigneCommandeDTO>lignes;
-    // Ajout
+    private List<LigneCommandeDTO> lignes;
+
+    // Prix
     private Double prixParTypePrestations;
     private Double prixCourseCollecte;
     private Double prixCourseLivraison;
     private String detailPrixReel;
     private Boolean prixAccepteClient;
-    // Dans CommandeDTO.java — ajoute ce champ
+
+    // ─── ÉTAPE COURANTE (Couche 2 — workflow métier) ─────────────────────
+    // null si statut = CREE ou CONFIRMEE
+    // Ex pressing : "collecte" | "traitement" | "livraison"
     private String etapeCourante;
-
-
 }
