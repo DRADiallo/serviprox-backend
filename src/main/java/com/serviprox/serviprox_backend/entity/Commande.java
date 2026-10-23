@@ -1,6 +1,5 @@
 package com.serviprox.serviprox_backend.entity;
 
-import com.serviprox.serviprox_backend.enums.ModeDepot;
 import com.serviprox.serviprox_backend.enums.StatutCommande;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
@@ -32,8 +31,8 @@ public class Commande {
     private StatutCommande statutCommande = StatutCommande.CREE;
 
     // Mode de dépôt choisi
-    @Enumerated(EnumType.STRING)
-    private ModeDepot modeDepot;
+    @Column
+    private String modeDepot;
 
     // Données de configuration en JSON
     @Column(columnDefinition = "TEXT")

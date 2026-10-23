@@ -80,7 +80,7 @@ services:
     # 7090:7090 = port local 7090 → port conteneur 7090
     # Flutter et React appellent http://localhost:7090
     ports:
-      - "7090:7090"
+      - "0.0.0.0:7090:7090"
 
     # Variables d'environnement Spring Boot
     # Surchargent application.properties

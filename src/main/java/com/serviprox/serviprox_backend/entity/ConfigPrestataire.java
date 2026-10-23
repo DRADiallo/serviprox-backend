@@ -12,30 +12,55 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 public class ConfigPrestataire {
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    // ─── EXISTANT — bon à garder ─────────────────────────
     @Column(columnDefinition = "TEXT")
-    private String tarifsPersonnalises; // JSON
+    private String tarifsPersonnalises;    // JSON
 
     @Column(columnDefinition = "TEXT")
-    private String optionsActives; // JSON
+    private String optionsActives;         // JSON
 
     @Column(columnDefinition = "TEXT")
-    private String prestationsAjoutees; // JSON
+    private String prestationsAjoutees;    // JSON
 
     @Column(columnDefinition = "TEXT")
-    private String zoneCouverture; // JSON
+    private String zoneCouverture;         // JSON
 
-    // Lié à un seul prestataire
+    // ─── À AJOUTER — requis par le mémoire ───────────────
+
+    // Étapes personnalisées (sous-ensemble de ConfigurationService.etapes)
+    // null → utilise les étapes du ConfigurationService
+    // Ex pressing sans agent : ["reception","traitement","restitution"]
+    @Column(columnDefinition = "TEXT")
+    private String etapesPersonnalisees;
+
+    // Modes de dépôt acceptés par CE prestataire
+    // null → tous les modes du ConfigurationService acceptés
+    // Ex : ["Collecte domicile","Dépôt atelier (livraison)"]
+    @Column(columnDefinition = "TEXT")
+    private String modesDepotAcceptes;
+
+    // Surcharge avecAgent du ConfigurationService
+    // null  → hérite de ConfigurationService.avecAgent
+    // true  → ce pressing utilise des agents
+    // false → ce pressing travaille sans agent
+    @Column
+    private Boolean avecAgent;
+
+    // Disponibilité pour nouvelles commandes
+    @Column
+    private Boolean disponible = true;
+
+    // ─── RELATIONS ────────────────────────────────────────
     @OneToOne
     @JoinColumn(name = "prestataire_id", nullable = false)
     private Prestataire prestataire;
 
-    // Instancie une ConfigurationService
     @ManyToOne
     @JoinColumn(name = "configuration_service_id")
     private ConfigurationService configurationService;
-
 }

@@ -29,6 +29,8 @@ public class CommandeDTO {
     private Double prixCourseLivraison;
     private String detailPrixReel;
     private Boolean prixAccepteClient;
+    // Dans CommandeDTO.java — ajoute ce champ
+    private String etapeCourante;
 
 
 }

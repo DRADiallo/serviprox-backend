@@ -4,7 +4,6 @@ import com.serviprox.serviprox_backend.dto.CommandeDTO;
 import com.serviprox.serviprox_backend.dto.CommandeRequest;
 import com.serviprox.serviprox_backend.dto.LigneCommandeDTO;
 import com.serviprox.serviprox_backend.entity.*;
-import com.serviprox.serviprox_backend.enums.ModeDepot;
 import com.serviprox.serviprox_backend.enums.StatutActeur;
 import com.serviprox.serviprox_backend.enums.StatutCommande;
 import com.serviprox.serviprox_backend.repository.*;
@@ -17,392 +16,294 @@ import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
-public class CommandeService{
-    private  final CommandeRepository commandeRepository;
-    private  final ClientRepository clientRepository;
-    private  final PrestataireRepository prestataireRepository;
-    private  final EvenementSuiviService evenementSuiviService;
+public class CommandeService {
+
+    private final CommandeRepository commandeRepository;
+    private final ClientRepository clientRepository;
+    private final PrestataireRepository prestataireRepository;
+    private final EvenementSuiviService evenementSuiviService;
     private final AgentRepository agentRepository;
     private final AffectationRepository affectationRepository;
     private final NotificationService notificationService;
     private final FcmService fcmService;
 
+    // ═══════════════════════════════════════════════════════════════
+    // CREATE — Client passe une commande
+    // ═══════════════════════════════════════════════════════════════
+    public CommandeDTO creerCommande(Long clientId, CommandeRequest req) {
 
-    // ═══ CREATE ═══
-    // Client passe une commande
-    public CommandeDTO creerCommande(Long clientId, CommandeRequest req){
+        Client client = clientRepository.findById(clientId)
+                .orElseThrow(() -> new RuntimeException("Client introuvable"));
 
-        Client client= clientRepository
-                .findById(clientId)
-                .orElseThrow(()-> new RuntimeException("Client Introuvable "));
+        Prestataire prestataire = prestataireRepository.findById(req.getPrestataireId())
+                .orElseThrow(() -> new RuntimeException("Prestataire introuvable"));
 
-        Prestataire prestataire= prestataireRepository
-                .findById(req.getPrestataireId())
-                .orElseThrow(()-> new RuntimeException("Prestataire Introuvable"));
-
-        // Vérifier que le prestataire est actif
-        if (prestataire.getStatut()!= StatutActeur.ACTIF){
-            throw new RuntimeException("Ce prestataire n est pas disponible ");
-
+        if (prestataire.getStatut() != StatutActeur.ACTIF) {
+            throw new RuntimeException("Ce prestataire n'est pas disponible");
         }
 
         Commande commande = new Commande();
         commande.setClient(client);
         commande.setPrestataire(prestataire);
-
-        // Statut initial toujours CREE
         commande.setStatutCommande(StatutCommande.CREE);
 
-        if (req.getModeDepot()!= null){
-            commande.setModeDepot(ModeDepot.valueOf(req.getModeDepot()));
+        // ✅ modeDepot est maintenant un String (plus d'enum ModeDepot)
+        // La valeur vient directement du formulaire Flutter,
+        // lu depuis ConfigurationService.champsCommande (Couche 2)
+        // Ex: "Collecte domicile", "Dépôt atelier (livraison)"
+        if (req.getModeDepot() != null) {
+            commande.setModeDepot(req.getModeDepot());
         }
 
         if (req.getDescriptionColis() != null) {
-            commande.setDescriptionColis(
-                    req.getDescriptionColis());
+            commande.setDescriptionColis(req.getDescriptionColis());
         }
 
         // Lignes de commande
-        if (req.getLignes() !=null){
-            List<LigneCommande> lignes= req.getLignes()
-                    .stream().map(l->{
-                        LigneCommande ligneCommande= new LigneCommande();
+        if (req.getLignes() != null) {
+            List<LigneCommande> lignes = req.getLignes()
+                    .stream().map(l -> {
+                        LigneCommande ligneCommande = new LigneCommande();
                         ligneCommande.setTypePrestation(l.getTypePrestation());
                         ligneCommande.setQuantite(l.getQuantite());
                         ligneCommande.setUnite(l.getUnite());
                         ligneCommande.setPrixUnitaire(Double.valueOf(l.getPrixUnitaire()));
                         ligneCommande.setInstructions(l.getInstruction());
-                        // Lien vers la commande parente
                         ligneCommande.setCommande(commande);
                         return ligneCommande;
                     }).collect(Collectors.toList());
             commande.setLignesCommande(lignes);
 
-            // Calcul automatique du montant total
-            // montant = somme(quantité × prix unitaire)
-            double totalprix= lignes.stream()
-                    .mapToDouble(l-> l.getQuantite()* l.getPrixUnitaire())
+            double totalPrix = lignes.stream()
+                    .mapToDouble(l -> l.getQuantite() * l.getPrixUnitaire())
                     .sum();
-            commande.setPrixParTypePrestations(totalprix);
-            commande.setMontantTotal(totalprix);
+            commande.setPrixParTypePrestations(totalPrix);
+            commande.setMontantTotal(totalPrix);
         }
+
         Commande saved = commandeRepository.save(commande);
 
         fcmService.envoyerNotification(
                 saved.getPrestataire().getId(),
                 "🔔 Nouvelle commande !",
-                "Client " + client.getPrenom()
-                        + " " + client.getNom()
-                        + " a passé une commande #"
-                        + saved.getId(),
+                "Client " + client.getPrenom() + " " + client.getNom()
+                        + " a passé une commande #" + saved.getId(),
                 "NOUVELLE_COMMANDE");
 
-        // Enregistrer événement de création
         evenementSuiviService.enregistrer(
-                saved.getId(),
-                null,
-                "CREE",
-                "CREATION",
-                "Commande creee par le client",
-                clientId
-        );
+                saved.getId(), null, "CREE", "CREATION",
+                "Commande créée par le client", clientId);
+
         return toDTO(saved);
-
     }
 
-    // ═══ READ ALL ═══
-    // Utilisé par AdminService
-    public List<CommandeDTO> getAll(){
-        return commandeRepository.findAll()
-                .stream()
-                .map(this::toDTO)
-                .collect(Collectors.toList());
+    // ═══════════════════════════════════════════════════════════════
+    // READ
+    // ═══════════════════════════════════════════════════════════════
+    public List<CommandeDTO> getAll() {
+        return commandeRepository.findAll().stream().map(this::toDTO).collect(Collectors.toList());
     }
 
-    // ═══ READ BY ID ═══
-    public CommandeDTO getById(Long id){
+    public CommandeDTO getById(Long id) {
         return toDTO(commandeRepository.findById(id)
-                .orElseThrow(()-> new RuntimeException("Commande Introuvable")));
-
+                .orElseThrow(() -> new RuntimeException("Commande introuvable")));
     }
 
-    // ═══ READ BY CLIENT ═══
-    // Historique des commandes du client
-    // Affiché dans l'onglet "Mes commandes" Flutter
-    public List<CommandeDTO> getByClient(Long id){
-        return commandeRepository
-                .findByClientId(id)
-                .stream()
-                .map(this::toDTO)
-                .collect(Collectors.toList());
+    public List<CommandeDTO> getByClient(Long id) {
+        return commandeRepository.findByClientId(id).stream().map(this::toDTO).collect(Collectors.toList());
     }
 
-    // ═══ READ BY PRESTATAIRE ═══
-    // Tableau de bord du prestataire
-
-    public List<CommandeDTO> getByPrestataire(Long prestatairId){
-        return commandeRepository
-                .findByPrestataireId(prestatairId)
-                .stream()
-                .map(this::toDTO)
-                .collect(Collectors.toList());
+    public List<CommandeDTO> getByPrestataire(Long prestataireId) {
+        return commandeRepository.findByPrestataireId(prestataireId).stream().map(this::toDTO).collect(Collectors.toList());
     }
 
-    // ═══ READ BY STATUT ═══
-    // Filtrer les commandes par statut
-    // Ex: toutes les commandes EN_TRAITEMENT
-
-    public List<CommandeDTO>getByStatut(StatutCommande statutCommande){
-
-        return commandeRepository
-                .findByStatutCommande(statutCommande)
-                .stream()
-                .map(this::toDTO)
-                .collect(Collectors.toList());
-
-    }
-    // ← Dans CommandeService
-    // Pas besoin d'AgentService !
-        private void libererAgent(Long commandeId, String typeAffectation) {
-
-        List<Affectation> affectations =
-                affectationRepository
-                        .findByCommandeId(commandeId);
-
-        for (Affectation a : affectations) {
-            if (typeAffectation.equals(
-                    a.getTypeAffectation()) &&
-                    a.getAgent() != null) {
-                // ← Direct repository ✅
-                a.getAgent().setDisponibilite(true);
-                agentRepository.save(a.getAgent());
-            }
-        }
+    public List<CommandeDTO> getByStatut(StatutCommande statutCommande) {
+        return commandeRepository.findByStatutCommande(statutCommande).stream().map(this::toDTO).collect(Collectors.toList());
     }
 
-    // ═══ READ BY STATUT ═══
-    // Filtrer les commandes par statut
-    // Ex: toutes les commandes EN_TRAITEMENT
+    // ═══════════════════════════════════════════════════════════════
+    // ACTUALISER STATUT — change le statut UNIVERSEL de la commande
+    // ═══════════════════════════════════════════════════════════════
+    //
+    // ✅ Architecture Couche 1 (mémoire) :
+    // Cette méthode ne connaît QUE les 6 statuts universels.
+    // Elle NE SAIT PAS si c'est un pressing, une réparation ou des soins.
+    // Les notifications sont génériques — basées sur le statut, pas le type.
+    //
+    // Pour avancer dans les étapes métier (collecte → traitement → livraison),
+    // utiliser la méthode avancerEtape() ci-dessous.
     @Transactional
-    public CommandeDTO actuliserStatut(
-            Long id, String statut, Long acteurId) {
+    public CommandeDTO actuliserStatut(Long id, String statut, Long acteurId) {
 
         Commande c = commandeRepository.findById(id)
-                .orElseThrow(() ->
-                        new RuntimeException(
-                                "Commande INtrouvable"));
+                .orElseThrow(() -> new RuntimeException("Commande introuvable"));
 
-        String ancienStatut =
-                c.getStatutCommande().name();
-        StatutCommande nouveauStatut =
-                StatutCommande.valueOf(statut);
+        String ancienStatut = c.getStatutCommande().name();
+        StatutCommande nouveauStatut = StatutCommande.valueOf(statut);
 
-        validerTransiton(
-                c.getStatutCommande(), nouveauStatut);
+        validerTransiton(c.getStatutCommande(), nouveauStatut);
 
         c.setStatutCommande(nouveauStatut);
-        commandeRepository.save(c);
+
+        // ─── Notifications universelles (Couche 1) ────────────────
+        // Aucun if sur typeService — valable pour tout type de service
 
         if (nouveauStatut == StatutCommande.CONFIRMEE) {
-            // → CLIENT notifié
             fcmService.envoyerNotification(
                     c.getClient().getId(),
                     "✅ Commande confirmée !",
-                    "Votre commande #" + id
-                            + " a été confirmée par "
+                    "Votre commande #" + id + " a été confirmée par "
                             + c.getPrestataire().getNomCommercial(),
                     "COMMANDE_CONFIRMEE");
         }
 
-        if (nouveauStatut == StatutCommande.EN_COLLECTE) {
-            // → CLIENT notifié
+        if (nouveauStatut == StatutCommande.EN_COURS) {
+            // Notification générique — l'étape précise est dans etapeCourante
             fcmService.envoyerNotification(
                     c.getClient().getId(),
-                    " Agent en route !",
-                    "L'agent est en route pour "
-                            + "collecter vos articles. "
-                            + "Commande #" + id,
-                    "EN_COLLECTE");
-        }
-        if (nouveauStatut ==
-                StatutCommande.EN_VERIFICATION) {
-            // → CLIENT notifié
-            fcmService.envoyerNotification(
-                    c.getClient().getId(),
-                    " Articles bien reçus !",
-                    "Le prestataire a reçu vos articles. "
-                            + "Évaluation en cours... "
-                            + "Commande #" + id,
-                    "ARTICLES_RECUS");
-        }
-
-        if (nouveauStatut ==
-                StatutCommande.EN_TRAITEMENT) {
-            // → CLIENT notifié
-            fcmService.envoyerNotification(
-                    c.getClient().getId(),
-                    "✅ Prix accepté !",
-                    "Votre commande #" + id
-                            + " est en cours de traitement.",
-                    "EN_TRAITEMENT");
-        }
-
-        if (nouveauStatut ==
-                StatutCommande.TRAITEMENT_TERMINE) {
-            // → CLIENT notifié
-            fcmService.envoyerNotification(
-                    c.getClient().getId(),
-                    " Articles prêts !!!",
-                    "Vos articles sont prêts ! "
-                            + "Effectuez le paiement "
-                            + "pour la commande #" + id,
-                    "TRAITEMENT_TERMINE");
-        }
-
-        if (nouveauStatut ==
-                StatutCommande.EN_LIVRAISON) {
-            // → CLIENT notifié
-            fcmService.envoyerNotification(
-                    c.getClient().getId(),
-                    "🛵 Livraison en route !",
-                    "Vos articles sont en cours "
-                            + "de livraison. Commande #" + id,
-                    "EN_LIVRAISON");
-        }
-
-        if (nouveauStatut ==
-                StatutCommande.VERIFICATION_FINALE) {
-            // → CLIENT notifié
-            fcmService.envoyerNotification(
-                    c.getClient().getId(),
-                    "📦 Articles livrés !",
-                    "Vos articles ont été livrés ! "
-                            + "Vérifiez et confirmez "
-                            + "la commande #" + id,
-                    "VERIFICATION_FINALE");
-            // → PRESTATAIRE notifié
-            fcmService.envoyerNotification(
-                    c.getPrestataire().getId(),
-                    "✅ Livraison effectuée !",
-                    "L'agent a livré la commande #"
-                            + id + ". En attente client.",
-                    "LIVRAISON_EFFECTUEE");
+                    "🔄 Commande en cours !",
+                    "Votre commande #" + id + " est en cours de traitement.",
+                    "COMMANDE_EN_COURS");
         }
 
         if (nouveauStatut == StatutCommande.CLOTUREE) {
-            // → PRESTATAIRE notifié
             fcmService.envoyerNotification(
                     c.getPrestataire().getId(),
-                    " Commande clôturée !",
-                    "La commande #" + id
-                            + " a été clôturée avec succès !",
+                    "✅ Commande clôturée !",
+                    "La commande #" + id + " a été clôturée avec succès !",
                     "COMMANDE_CLOTUREE");
-            // → CLIENT notifié
             fcmService.envoyerNotification(
                     c.getClient().getId(),
-                    " Merci pour votre confiance !",
-                    "Votre commande #" + id
-                            + " est clôturée. "
-                            + "À bientôt sur ServiProx !",
+                    "✅ Merci pour votre confiance !",
+                    "Votre commande #" + id + " est clôturée. À bientôt sur ServiProx !",
                     "COMMANDE_CLOTUREE");
+            // Libérer l'agent de livraison si existant
+            libererAgent(id, "LIVRAISON");
         }
 
         if (nouveauStatut == StatutCommande.ANNULEE) {
-            // → CLIENT notifié
             fcmService.envoyerNotification(
                     c.getClient().getId(),
-                    "❌ Commande refusée !",
-                    "Votre commande #" + id
-                            + " a été refusée. "
-                            + "Essayez un autre prestataire.",
+                    "❌ Commande annulée !",
+                    "Votre commande #" + id + " a été annulée.",
                     "COMMANDE_ANNULEE");
         }
 
         if (nouveauStatut == StatutCommande.LITIGE) {
-            // → CLIENT notifié
             fcmService.envoyerNotification(
                     c.getClient().getId(),
                     "⚠️ Litige ouvert !",
-                    "Un litige a été ouvert "
-                            + "sur votre commande #" + id
-                            + ". Nous vous contactons.",
+                    "Un litige a été ouvert sur votre commande #" + id + ". Nous vous contactons.",
                     "LITIGE_OUVERT");
-            // → PRESTATAIRE notifié
             fcmService.envoyerNotification(
                     c.getPrestataire().getId(),
                     "⚠️ Litige ouvert !",
-                    "Un litige a été ouvert "
-                            + "sur la commande #" + id
-                            + ". Contactez le client.",
+                    "Un litige a été ouvert sur la commande #" + id + ". Contactez le client.",
                     "LITIGE_OUVERT");
         }
 
-
-        // ← REMPLACER les 2 anciens blocs par :
-        // Agent collecte libéré après réception
-        if (nouveauStatut ==
-                StatutCommande.EN_VERIFICATION) {
-            libererAgent(id, "COLLECTE");
-        }
-
-        // ← Agent livraison libéré à clôture
-        if (nouveauStatut ==
-                StatutCommande.CLOTUREE) {
-            libererAgent(id, "LIVRAISON");
-        }
+        commandeRepository.save(c);
 
         evenementSuiviService.enregistrer(
-                id,
-                ancienStatut,
-                statut,
-                "CHANGEMENT_STATUT",
-                "STATUT CHANGE "
-                        + ancienStatut
-                        + " -> " + statut,
-                acteurId
-        );
+                id, ancienStatut, statut, "CHANGEMENT_STATUT",
+                "Statut changé : " + ancienStatut + " → " + statut, acteurId);
 
         return toDTO(c);
     }
-        // ═══ ANNULER ═══
-        // Annulation possible uniquement avant
-        // le début de l'exécution (EN_TRAITEMENT)
 
-        public CommandeDTO annuler(Long id, Long acteurId){
-            Commande c = commandeRepository.findById(id)
-                    .orElseThrow(()-> new RuntimeException("Commande Introuvable"));
+    // ═══════════════════════════════════════════════════════════════
+    // AVANCER ÉTAPE — avance l'étape métier DANS EN_COURS
+    // ═══════════════════════════════════════════════════════════════
+    //
+    // ✅ Architecture Couche 2 (mémoire) — MÉTHODE CLÉ :
+    // Cette méthode est GÉNÉRIQUE pour TOUS les types de service.
+    // Elle ne sait pas si c'est "collecte" (pressing) ou
+    // "diagnostic" (réparation) — elle avance juste l'étape.
+    //
+    // Les étapes valides viennent de ConfigPrestataire.etapesPersonnalisees
+    // ou de ConfigurationService.etapes.
+    //
+    // Exemple d'appel :
+    //   pressing    : avancerEtape(id, "traitement", agentId)
+    //   reparation  : avancerEtape(id, "reparation", prestataireId)
+    //   soins       : avancerEtape(id, "intervention", prestataireId)
+    @Transactional
+    public CommandeDTO avancerEtape(Long commandeId, String nouvelleEtape, Long acteurId) {
 
-            if (c.getStatutCommande()== StatutCommande.EN_TRAITEMENT ||
-                    c.getStatutCommande()== StatutCommande.EN_LIVRAISON ||
-                    c.getStatutCommande() == StatutCommande.CLOTUREE) {
-                throw new RuntimeException("Impossible d'annuler "+ "la prestation est deja en cours !!");
+        Commande c = commandeRepository.findById(commandeId)
+                .orElseThrow(() -> new RuntimeException("Commande introuvable"));
 
-            }
-
-            String ancienStatut = c.getStatutCommande().name();
-            c.setStatutCommande(StatutCommande.ANNULEE);
-            commandeRepository.save(c);
-
-            evenementSuiviService.enregistrer(
-                    id,
-                    ancienStatut,
-                    "ANNULEE",
-                    "Commande annulee",
-
-                    "COMMANDE_ANNULLEE",
-                    acteurId
-            );
-            return toDTO(c);
+        if (c.getStatutCommande() != StatutCommande.EN_COURS) {
+            throw new RuntimeException(
+                    "Impossible d'avancer l'étape : la commande n'est pas EN_COURS");
         }
 
-    // ═══ VALIDATION TRANSITION STATUT ═══
-    // Règles métier du cycle de vie
-    // On ne peut pas sauter d'étapes !
+        String ancienneEtape = c.getEtapeCourante();
+        c.setEtapeCourante(nouvelleEtape);
+        commandeRepository.save(c);
 
+        // Notification générique — fonctionne pour TOUT type de service
+        fcmService.envoyerNotification(
+                c.getClient().getId(),
+                "📦 Mise à jour commande #" + commandeId,
+                "Étape en cours : " + nouvelleEtape,
+                "ETAPE_" + nouvelleEtape.toUpperCase());
+
+        // Libérer l'agent de collecte quand l'étape "collecte" est terminée
+        if ("traitement".equals(nouvelleEtape)) {
+            libererAgent(commandeId, "COLLECTE");
+        }
+
+        evenementSuiviService.enregistrer(
+                commandeId,
+                ancienneEtape != null ? ancienneEtape : "DEBUT",
+                nouvelleEtape,
+                "AVANCEMENT_ETAPE",
+                "Étape avancée : " + ancienneEtape + " → " + nouvelleEtape,
+                acteurId);
+
+        return toDTO(c);
+    }
+
+    // ═══════════════════════════════════════════════════════════════
+    // ANNULER
+    // ═══════════════════════════════════════════════════════════════
+    public CommandeDTO annuler(Long id, Long acteurId) {
+        Commande c = commandeRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Commande introuvable"));
+
+        // ✅ Utilise uniquement les statuts universels (Couche 1)
+        if (c.getStatutCommande() == StatutCommande.CLOTUREE) {
+            throw new RuntimeException("Impossible d'annuler : commande déjà clôturée !");
+        }
+        if (c.getStatutCommande() == StatutCommande.EN_COURS) {
+            throw new RuntimeException("Impossible d'annuler : la prestation est déjà en cours !");
+        }
+
+        String ancienStatut = c.getStatutCommande().name();
+        c.setStatutCommande(StatutCommande.ANNULEE);
+        commandeRepository.save(c);
+
+        evenementSuiviService.enregistrer(
+                id, ancienStatut, "ANNULEE",
+                "Commande annulée", "COMMANDE_ANNULEE", acteurId);
+
+        return toDTO(c);
+    }
+
+    // ═══════════════════════════════════════════════════════════════
+    // VALIDATION TRANSITION STATUT
+    // ═══════════════════════════════════════════════════════════════
+    //
+    // ✅ Simplifié pour les 6 statuts universels (Couche 1)
+    // Plus de EN_COLLECTE, EN_TRAITEMENT, TRAITEMENT_TERMINE...
+    // Ces étapes sont dans avancerEtape() (Couche 2)
+    //
+    // Cycle : CREE → CONFIRMEE → EN_COURS → CLOTUREE
+    //                   ↓            ↓
+    //                ANNULEE       LITIGE → CLOTUREE
     private void validerTransiton(StatutCommande actuel, StatutCommande nouveau) {
-
         if (actuel == StatutCommande.CLOTUREE || actuel == StatutCommande.ANNULEE) {
-
             throw new RuntimeException("Commande déjà finalisée !");
         }
 
@@ -412,40 +313,13 @@ public class CommandeService{
                             nouveau == StatutCommande.ANNULEE;
 
             case CONFIRMEE ->
-                // ← Agent collecte ou dépôt atelier
-                    nouveau == StatutCommande.EN_COLLECTE ||
-                            nouveau == StatutCommande.EN_VERIFICATION ||
+                    nouveau == StatutCommande.EN_COURS ||
                             nouveau == StatutCommande.ANNULEE;
 
-            // ← NOUVEAU : Agent confirme collecte
-            case EN_COLLECTE ->
-                    nouveau == StatutCommande.EN_VERIFICATION ||
-                            nouveau == StatutCommande.LITIGE;
-
-            case EN_VERIFICATION ->
-                // ← Client accepte prix réel
-                    nouveau == StatutCommande.EN_TRAITEMENT ||
-                            nouveau == StatutCommande.LITIGE;
-
-            case EN_TRAITEMENT ->
-                    nouveau == StatutCommande.TRAITEMENT_TERMINE;
-
-            // ← Paiement intégré ici
-            // Client paie + Prestataire confirme
-            // → EN_LIVRAISON directement !
-            case TRAITEMENT_TERMINE ->
-                    nouveau == StatutCommande.EN_LIVRAISON ||
-                            // ← Si client vient récupérer
-                            nouveau == StatutCommande.VERIFICATION_FINALE;
-
-            case EN_LIVRAISON ->
-                    nouveau == StatutCommande.VERIFICATION_FINALE;
-
-
-            // Directement CLOTUREE !
-            case VERIFICATION_FINALE ->
+            case EN_COURS ->
                     nouveau == StatutCommande.CLOTUREE ||
-                            nouveau == StatutCommande.LITIGE;
+                            nouveau == StatutCommande.LITIGE ||
+                            nouveau == StatutCommande.ANNULEE;
 
             case LITIGE ->
                     nouveau == StatutCommande.CLOTUREE ||
@@ -455,107 +329,25 @@ public class CommandeService{
         };
 
         if (!valide) {
-            throw new RuntimeException(
-                    "Transition invalide : "
-                            + actuel + " → " + nouveau);
+            throw new RuntimeException("Transition invalide : " + actuel + " → " + nouveau);
         }
     }
 
-    //  : assigner agent à une commande
+    // ═══════════════════════════════════════════════════════════════
+    // FIXER PRIX RÉEL — prestataire évalue le prix après vérification
+    // ═══════════════════════════════════════════════════════════════
     @Transactional
-    public CommandeDTO assignerAgent(Long commandeId, Long agentId, String typeAffectation) {
+    public CommandeDTO fixerPrixReel(Long commandeId, Double prixParTypePrestations,
+                                     Double prixCourseCollecte, Double prixCourseLivraison,
+                                     String detailPrixReel, Long acteurId) {
 
-        Commande commande = commandeRepository
-                .findById(commandeId)
-                .orElseThrow(() ->
-                        new RuntimeException(
-                                "Commande introuvable"));
+        Commande commande = commandeRepository.findById(commandeId)
+                .orElseThrow(() -> new RuntimeException("Commande introuvable"));
 
-        Agent agent = agentRepository
-                .findById(agentId)
-                .orElseThrow(() ->
-                        new RuntimeException(
-                                "Agent introuvable"));
-
-        // Vérifier disponibilité
-        if (!agent.getDisponibilite()) {
-            throw new RuntimeException(
-                    "Agent non disponible !");
-        }
-
-        // Vérifier si déjà assigné pour ce type
-        affectationRepository
-                .findByCommandeIdAndTypeAffectation(
-                        commandeId, typeAffectation)
-                .ifPresent(a -> {
-                    throw new RuntimeException(
-                            "Un agent est déjà assigné "
-                                    + "pour ce type !");
-                });
-
-        // Créer affectation
-        Affectation affectation = new Affectation();
-        affectation.setAgent(agent);
-        affectation.setCommande(commande);
-        affectation.setStatut("EN_ATTENTE");
-        affectation.setTypeAffectation(
-                typeAffectation);
-        affectationRepository.save(affectation);
-        notificationService.envoyer(
-                agent.getId(),
-                "NOUVELLE_MISSION",
-                " Nouvelle mission " + typeAffectation
-                        + " ! Commande #" + commandeId
-                        + " — Client : "
-                        + commande.getClient().getPrenom()
-                        + " " + commande.getClient().getNom()
-                        + ". Confirmez votre mission !");
-
-        // Rendre agent indisponible
-        agent.setDisponibilite(false);
-        agentRepository.save(agent);
-
-        // Enregistrer événement
-        evenementSuiviService.enregistrer(
-                commandeId,
-                commande.getStatutCommande().name(),
-                commande.getStatutCommande().name(),
-                "ASSIGNATION_AGENT",
-                "Agent " + agent.getPrenom()
-                        + " " + agent.getNom()
-                        + " assigné pour "
-                        + typeAffectation,
-                agentId
-        );
-
-        return toDTO(commande);
-    }
-
-    // ← NOUVELLE MÉTHODE dans CommandeService
-    @Transactional
-    public CommandeDTO fixerPrixReel(Long commandeId, Double prixParTypePrestations, Double prixCourseCollecte,
-            Double prixCourseLivraison, String detailPrixReel, Long acteurId) {
-
-        Commande commande = commandeRepository
-                .findById(commandeId)
-                .orElseThrow(() ->
-                        new RuntimeException(
-                                "Commande introuvable"));
-
-        // ← Fixer les prix
-        commande.setPrixParTypePrestations(
-                prixParTypePrestations);
-        commande.setPrixCourseCollecte(
-                prixCourseCollecte != null
-                        ? prixCourseCollecte : 0.0);
-        commande.setPrixCourseLivraison(
-                prixCourseLivraison != null
-                        ? prixCourseLivraison : 0.0);
-
-        // ← Détail en JSON
+        commande.setPrixParTypePrestations(prixParTypePrestations);
+        commande.setPrixCourseCollecte(prixCourseCollecte != null ? prixCourseCollecte : 0.0);
+        commande.setPrixCourseLivraison(prixCourseLivraison != null ? prixCourseLivraison : 0.0);
         commande.setDetailPrixReel(detailPrixReel);
-
-        // ← Calcul automatique montantTotal
         commande.setMontantTotal(
                 commande.getPrixParTypePrestations()
                         + commande.getPrixCourseCollecte()
@@ -565,175 +357,186 @@ public class CommandeService{
 
         fcmService.envoyerNotification(
                 commande.getClient().getId(),
-                " Prix réel fixé !",
+                "💰 Prix réel fixé !",
                 "Votre commande #" + commandeId
-                        + " a été évaluée selon les vos prestatations commandez. "
-                        + "Montant total : "
-                        + commande.getMontantTotal()
-                        + " FCFA. Acceptez ou refusez !",
+                        + " a été évaluée. Montant total : "
+                        + commande.getMontantTotal() + " FCFA. Acceptez ou refusez !",
                 "PRIX_FIXE");
 
-        // ← Notifier le client
         notificationService.envoyer(
                 commande.getClient().getId(),
                 "PRIX_CONFIRME",
-                "Votre commande #" + commandeId
-                        + " a été vérifiée. "
-                        + "Montant total : "
-                        + commande.getMontantTotal()
-                        + " FCFA. "
-                        + "Veuillez confirmer !");
+                "Votre commande #" + commandeId + " a été vérifiée. Montant total : "
+                        + commande.getMontantTotal() + " FCFA. Veuillez confirmer !");
 
-        // ← Enregistrer événement
         evenementSuiviService.enregistrer(
                 commandeId,
                 commande.getStatutCommande().name(),
                 commande.getStatutCommande().name(),
                 "PRIX_FIXE",
-                "Prix réel fixé par prestataire : "
-                        + commande.getMontantTotal() + " FCFA",
+                "Prix réel fixé : " + commande.getMontantTotal() + " FCFA",
                 acteurId);
 
         return toDTO(commande);
     }
 
+    // ═══════════════════════════════════════════════════════════════
+    // ACCEPTER / REFUSER PRIX — décision du client
+    // ═══════════════════════════════════════════════════════════════
     @Transactional
     public CommandeDTO accepterPrix(Long commandeId, String decision, Long acteurId) {
 
-        Commande commande = commandeRepository
-                .findById(commandeId)
-                .orElseThrow(() ->
-                        new RuntimeException(
-                                "Commande introuvable"));
+        Commande commande = commandeRepository.findById(commandeId)
+                .orElseThrow(() -> new RuntimeException("Commande introuvable"));
 
         if ("ACCEPTER".equals(decision)) {
-            // ← Client accepte → EN_TRAITEMENT
             commande.setPrixAccepteClient(true);
             commandeRepository.save(commande);
             fcmService.envoyerNotification(
                     commande.getPrestataire().getId(),
                     "✅ Prix accepté !",
-                    "Le client a accepté le prix. "
-                            + "Commande #" + commandeId
-                            + " en traitement.",
+                    "Le client a accepté le prix. Commande #" + commandeId + " en traitement.",
                     "PRIX_ACCEPTE");
-
-            // ← Passer EN_TRAITEMENT
-            return actuliserStatut(
-                    commandeId,
-                    "EN_TRAITEMENT",
-                    acteurId);
+            // Le prestataire doit ensuite appeler avancerEtape()
+            return toDTO(commande);
 
         } else {
-            // ← Client refuse → ANNULEE
-            // ← Notifier prestataire
             fcmService.envoyerNotification(
                     commande.getPrestataire().getId(),
                     "❌ Prix refusé !",
-                    "Le client a refusé le prix "
-                            + "proposé. Commande #"
-                            + commandeId + " annulée.",
+                    "Le client a refusé le prix. Commande #" + commandeId + " annulée.",
                     "PRIX_REFUSE");
-
-            // ← Notifier client
             fcmService.envoyerNotification(
                     commande.getClient().getId(),
                     "❌ Commande annulée",
-                    "Votre commande #" + commandeId
-                            + " a été annulée suite "
-                            + "au refus du prix. "
-                            + "Désolé pour la gêne.",
+                    "Votre commande #" + commandeId + " a été annulée suite au refus du prix.",
                     "COMMANDE_ANNULEE");
-
-            return actuliserStatut(
-                    commandeId,
-                    "ANNULEE",
-                    acteurId);
+            return actuliserStatut(commandeId, "ANNULEE", acteurId);
         }
     }
 
-    // ═══ MAPPER entité → DTO ═══
+    // ═══════════════════════════════════════════════════════════════
+    // ASSIGNER AGENT
+    // ═══════════════════════════════════════════════════════════════
+    @Transactional
+    public CommandeDTO assignerAgent(Long commandeId, Long agentId, String typeAffectation) {
+
+        Commande commande = commandeRepository.findById(commandeId)
+                .orElseThrow(() -> new RuntimeException("Commande introuvable"));
+
+        Agent agent = agentRepository.findById(agentId)
+                .orElseThrow(() -> new RuntimeException("Agent introuvable"));
+
+        if (!agent.getDisponibilite()) {
+            throw new RuntimeException("Agent non disponible !");
+        }
+
+        affectationRepository.findByCommandeIdAndTypeAffectation(commandeId, typeAffectation)
+                .ifPresent(a -> {
+                    throw new RuntimeException("Un agent est déjà assigné pour ce type !");
+                });
+
+        Affectation affectation = new Affectation();
+        affectation.setAgent(agent);
+        affectation.setCommande(commande);
+        affectation.setStatut("EN_ATTENTE");
+        affectation.setTypeAffectation(typeAffectation);
+        affectationRepository.save(affectation);
+
+        notificationService.envoyer(
+                agent.getId(),
+                "NOUVELLE_MISSION",
+                "Nouvelle mission " + typeAffectation + " ! Commande #" + commandeId
+                        + " — Client : " + commande.getClient().getPrenom()
+                        + " " + commande.getClient().getNom() + ". Confirmez votre mission !");
+
+        agent.setDisponibilite(false);
+        agentRepository.save(agent);
+
+        evenementSuiviService.enregistrer(
+                commandeId,
+                commande.getStatutCommande().name(),
+                commande.getStatutCommande().name(),
+                "ASSIGNATION_AGENT",
+                "Agent " + agent.getPrenom() + " " + agent.getNom()
+                        + " assigné pour " + typeAffectation,
+                agentId);
+
+        return toDTO(commande);
+    }
+
+    // ═══════════════════════════════════════════════════════════════
+    // LIBÉRER AGENT (méthode privée)
+    // ═══════════════════════════════════════════════════════════════
+    private void libererAgent(Long commandeId, String typeAffectation) {
+        List<Affectation> affectations = affectationRepository.findByCommandeId(commandeId);
+        for (Affectation a : affectations) {
+            if (typeAffectation.equals(a.getTypeAffectation()) && a.getAgent() != null) {
+                a.getAgent().setDisponibilite(true);
+                agentRepository.save(a.getAgent());
+            }
+        }
+    }
+
+    // ═══════════════════════════════════════════════════════════════
+    // MAPPER entité → DTO
+    // ═══════════════════════════════════════════════════════════════
     public CommandeDTO toDTO(Commande c) {
         CommandeDTO dto = new CommandeDTO();
         dto.setId(c.getId());
-        dto.setStatut(c.getStatutCommande() != null
-                ? c.getStatutCommande().name() : null);
+        dto.setStatut(c.getStatutCommande() != null ? c.getStatutCommande().name() : null);
+
+        // ✅ etapeCourante — étape métier en cours (Couche 2)
+        // Ex: "collecte", "traitement", "livraison" pour le pressing
+        dto.setEtapeCourante(c.getEtapeCourante());
+
         dto.setMontantTotal(c.getMontantTotal());
-        dto.setDateCommande(c.getDateCommande() != null
-                ? c.getDateCommande().toLocalDate() : null);
-        dto.setMotDepot(c.getModeDepot() != null
-                ? c.getModeDepot().name() : null);
-        dto.setNomPrestataire(
-                c.getPrestataire().getNomCommercial());
+        dto.setDateCommande(c.getDateCommande() != null ? c.getDateCommande().toLocalDate() : null);
 
-        dto.setDescriptionColis(
-                c.getDescriptionColis());
+        // ✅ modeDepot est un String (plus d'enum) — pas de .name()
+        dto.setMotDepot(c.getModeDepot());
 
-        // Infos client
-        dto.setNomClient(c.getClient().getNom()
-                + " " + c.getClient().getPrenom());
-        dto.setTelephoneClient(
-                c.getClient().getTelephone());
-
+        dto.setNomPrestataire(c.getPrestataire().getNomCommercial());
         dto.setDescriptionColis(c.getDescriptionColis());
-        dto.setPrixParTypePrestations(
-                c.getPrixParTypePrestations());
-        dto.setPrixCourseCollecte(
-                c.getPrixCourseCollecte());
-        dto.setPrixCourseLivraison(
-                c.getPrixCourseLivraison());
+        dto.setNomClient(c.getClient().getNom() + " " + c.getClient().getPrenom());
+        dto.setTelephoneClient(c.getClient().getTelephone());
+        dto.setPrixParTypePrestations(c.getPrixParTypePrestations());
+        dto.setPrixCourseCollecte(c.getPrixCourseCollecte());
+        dto.setPrixCourseLivraison(c.getPrixCourseLivraison());
         dto.setDetailPrixReel(c.getDetailPrixReel());
-        dto.setPrixAccepteClient(
-                c.getPrixAccepteClient());
+        dto.setPrixAccepteClient(c.getPrixAccepteClient());
 
-        // ← AJOUT : infos agents via affectations
+        // Infos agents via affectations
         if (c.getAffectations() != null) {
             for (Affectation a : c.getAffectations()) {
                 if (a.getAgent() == null) continue;
-
                 Agent agent = a.getAgent();
-                String nomAgent = agent.getPrenom()
-                        + " " + agent.getNom();
+                String nomAgent = agent.getPrenom() + " " + agent.getNom();
                 String telAgent = agent.getTelephone();
-
-                if ("COLLECTE".equals(
-                        a.getTypeAffectation())) {
-                    dto.setAgentCollecteId(
-                            agent.getId());
+                if ("COLLECTE".equals(a.getTypeAffectation())) {
+                    dto.setAgentCollecteId(agent.getId());
                     dto.setNomAgentCollecte(nomAgent);
-                    dto.setTelephoneAgentCollecte(
-                            telAgent);
-                } else if ("LIVRAISON".equals(
-                        a.getTypeAffectation())) {
-                    dto.setAgentLivraisonId(
-                            agent.getId());
+                    dto.setTelephoneAgentCollecte(telAgent);
+                } else if ("LIVRAISON".equals(a.getTypeAffectation())) {
+                    dto.setAgentLivraisonId(agent.getId());
                     dto.setNomAgentLivraison(nomAgent);
-                    dto.setTelephoneAgentLivraison(
-                            telAgent);
+                    dto.setTelephoneAgentLivraison(telAgent);
                 }
             }
         }
 
         // Lignes de commande
         if (c.getLignesCommande() != null) {
-            dto.setLignes(c.getLignesCommande()
-                    .stream()
-                    .map(l -> {
-                        LigneCommandeDTO ld =
-                                new LigneCommandeDTO();
-                        ld.setTypePrestation(
-                                l.getTypePrestation());
-                        ld.setQuantite(l.getQuantite());
-                        ld.setPrixUnitaire(
-                                l.getPrixUnitaire());
-                        ld.setMontantLigne(
-                                l.getQuantite()
-                                        * l.getPrixUnitaire());
-                        return ld;
-                    }).collect(Collectors.toList()));
+            dto.setLignes(c.getLignesCommande().stream().map(l -> {
+                LigneCommandeDTO ld = new LigneCommandeDTO();
+                ld.setTypePrestation(l.getTypePrestation());
+                ld.setQuantite(l.getQuantite());
+                ld.setPrixUnitaire(l.getPrixUnitaire());
+                ld.setMontantLigne(l.getQuantite() * l.getPrixUnitaire());
+                return ld;
+            }).collect(Collectors.toList()));
         }
+
         return dto;
     }
-
 }
-

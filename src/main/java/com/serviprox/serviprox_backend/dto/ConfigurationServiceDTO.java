@@ -8,6 +8,9 @@ public class ConfigurationServiceDTO {
     private String typeService;
     private String labelAffiche;
     private String etapes;
+    private Boolean avecAgent;
+    private String sousTypes;
+    private String champsSupplementaires;
     private String champsCommande;
     private String typesPrestation;
     private String optionsDisponibles;

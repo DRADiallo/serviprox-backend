@@ -20,30 +20,38 @@ public class ConfigPrestataireService {
     private final PrestataireRepository prestataireRepository;
     private final ConfigurationServiceRepository configurationServiceRepository;
 
-    // ═══ CREATE / UPDATE ═══
-    // Créer ou mettre à jour la config d'un prestataire
-    // Si config existe → mise à jour
-    // Si première fois → création
-
+    // ═══════════════════════════════════════════════════════════════
+    // CREATE / UPDATE — Prestataire configure son service
+    // ═══════════════════════════════════════════════════════════════
+    // Appelé lors de l'inscription ou de la mise à jour du profil.
+    // Si config existe → mise à jour. Si nouvelle → création.
+    //
+    // Exemple pressing sans agent :
+    //   typeService         = "pressing"
+    //   avecAgent           = false
+    //   etapesPersonnal.    = ["reception","traitement","restitution"]
+    //   modesDepotAcceptes  = ["Dépôt et récupération"]
     public ConfigPrestataireDTO configurerService(
             Long prestataireId,
             String typeService,
             String tarifJson,
             String optionJson,
             String prestationJson,
-            String zoneCouverture){
-        var prestataire = prestataireRepository
-                .findById(prestataireId)
-                .orElseThrow(()-> new RuntimeException("Prestataire Introuvable"));
+            String zoneCouverture,
+            String etapesPersonnalisees,   // ← NOUVEAU
+            String modesDepotAcceptes,     // ← NOUVEAU
+            Boolean avecAgent) {           // ← NOUVEAU
 
-        // Vérifier que le type de service existe
-        // pressing, reparation, soins
+        var prestataire = prestataireRepository.findById(prestataireId)
+                .orElseThrow(() -> new RuntimeException("Prestataire introuvable"));
 
-        ConfigurationService configService= configurationServiceRepository
-                .findByTypeService(typeService).orElseThrow(()-> new RuntimeException("Type de Service Inconnu : "+ typeService));
+        // Vérifie que le type de service existe en base (Couche 2)
+        ConfigurationService configService = configurationServiceRepository
+                .findByTypeService(typeService)
+                .orElseThrow(() -> new RuntimeException("Type de service inconnu : " + typeService));
 
         // Chercher config existante ou créer nouvelle
-        ConfigPrestataire configPrest= configPrestataireRepository
+        ConfigPrestataire configPrest = configPrestataireRepository
                 .findByPrestataireId(prestataireId)
                 .orElse(new ConfigPrestataire());
 
@@ -53,140 +61,121 @@ public class ConfigPrestataireService {
         configPrest.setOptionsActives(optionJson);
         configPrest.setPrestationsAjoutees(prestationJson);
         configPrest.setZoneCouverture(zoneCouverture);
+        configPrest.setEtapesPersonnalisees(etapesPersonnalisees);  // ← NOUVEAU
+        configPrest.setModesDepotAcceptes(modesDepotAcceptes);      // ← NOUVEAU
+        configPrest.setAvecAgent(avecAgent);                        // ← NOUVEAU
+        configPrest.setDisponible(true);
 
         return toDTO(configPrestataireRepository.save(configPrest));
-
-
     }
-    // ═══ READ BY PRESTATAIRE ═══
-    // Flutter lit cette config pour afficher :
-    // - Les tarifs au client
-    // - Les options disponibles
-    // - La zone de couverture
-    public ConfigPrestataireDTO getByPrestataire(Long prestaatireId){
 
+    // ═══════════════════════════════════════════════════════════════
+    // READ
+    // ═══════════════════════════════════════════════════════════════
+    public ConfigPrestataireDTO getByPrestataire(Long prestataireId) {
         return toDTO(configPrestataireRepository
-                .findByPrestataireId(prestaatireId)
-                .orElseThrow(()-> new RuntimeException("Configuration introuvable --??"+ "Configurez d'abord votre service")));
-
+                .findByPrestataireId(prestataireId)
+                .orElseThrow(() -> new RuntimeException(
+                        "Configuration introuvable — configurez d'abord votre service")));
     }
 
-    // ═══ READ BY ID ═══
-    public ConfigPrestataireDTO getById(Long id){
-
-        return toDTO(configPrestataireRepository
-                .findById(id)
-                .orElseThrow(()-> new RuntimeException("Configuration Introuvable"))
-        );
-
+    public ConfigPrestataireDTO getById(Long id) {
+        return toDTO(configPrestataireRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Configuration introuvable")));
     }
 
-    // ═══ READ ALL ═══
-    // Utilisé par AdminService pour supervision
-
-    public List<ConfigPrestataireDTO> getAll(){
-
+    public List<ConfigPrestataireDTO> getAll() {
         return configPrestataireRepository.findAll()
                 .stream()
                 .map(this::toDTO)
                 .collect(Collectors.toList());
-
-
     }
 
-    // ═══ UPDATE TARIFS UNIQUEMENT ═══
-    // Augmentation des prix en période de fêtes
-     public ConfigPrestataireDTO modifierTarifs(Long prestataireId, String tarifsJson){
-        ConfigPrestataire configPrest= configPrestataireRepository
-                .findByPrestataireId(prestataireId)
-                .orElseThrow(()-> new RuntimeException("Configuration Introuvable"));
-
-        configPrest.setTarifsPersonnalises(tarifsJson);
-        return toDTO(configPrestataireRepository.save(configPrest));
-
-     }
-
-    // ═══ UPDATE ZONE UNIQUEMENT ═══
-    // Un pressing qui s'agrandit étend sa zone
-    // Ex: "Médina" → "Médina, Plateau, Grand Dakar"
-     public ConfigPrestataireDTO modifierZoneCouverture(Long prestataireId, String zoneCouv){
-
-        ConfigPrestataire configPress= configPrestataireRepository
-                .findByPrestataireId(prestataireId)
-                .orElseThrow(()-> new RuntimeException("Prestataire Introuvable"));
-
-        configPress.setZoneCouverture(zoneCouv);
-        return toDTO(configPrestataireRepository.save(configPress));
-
-     }
-
-    // ═══ UPDATE OPTIONS UNIQUEMENT ═══
-    // Activer/désactiver des options
-    // Ex: activer "optionExpress" pour les fêtes
-
-    public ConfigPrestataireDTO modifierOptions(Long prestataireId, String optionJson){
-
-        ConfigPrestataire configPress= configPrestataireRepository
-                .findByPrestataireId(prestataireId)
-                .orElseThrow(()-> new RuntimeException("Prestataire Introuvable"));
-
-        configPress.setOptionsActives(optionJson);
-        return toDTO(configPrestataireRepository.save(configPress));
-
+    // ═══════════════════════════════════════════════════════════════
+    // UPDATE TARIFS
+    // ═══════════════════════════════════════════════════════════════
+    public ConfigPrestataireDTO modifierTarifs(Long prestataireId, String tarifsJson) {
+        ConfigPrestataire cp = configPrestataireRepository.findByPrestataireId(prestataireId)
+                .orElseThrow(() -> new RuntimeException("Configuration introuvable"));
+        cp.setTarifsPersonnalises(tarifsJson);
+        return toDTO(configPrestataireRepository.save(cp));
     }
 
-    // ═══ DELETE ═══
-    // Supprimer la configuration
-    // Rare — généralement on reconfigure
+    // ═══════════════════════════════════════════════════════════════
+    // UPDATE ZONE
+    // ═══════════════════════════════════════════════════════════════
+    public ConfigPrestataireDTO modifierZoneCouverture(Long prestataireId, String zoneCouv) {
+        ConfigPrestataire cp = configPrestataireRepository.findByPrestataireId(prestataireId)
+                .orElseThrow(() -> new RuntimeException("Configuration introuvable"));
+        cp.setZoneCouverture(zoneCouv);
+        return toDTO(configPrestataireRepository.save(cp));
+    }
 
-    public void supprimerConfig(Long id){
+    // ═══════════════════════════════════════════════════════════════
+    // UPDATE OPTIONS
+    // ═══════════════════════════════════════════════════════════════
+    public ConfigPrestataireDTO modifierOptions(Long prestataireId, String optionJson) {
+        ConfigPrestataire cp = configPrestataireRepository.findByPrestataireId(prestataireId)
+                .orElseThrow(() -> new RuntimeException("Configuration introuvable"));
+        cp.setOptionsActives(optionJson);
+        return toDTO(configPrestataireRepository.save(cp));
+    }
 
-        if (!configPrestataireRepository.existsById(id)){
-            throw new RuntimeException("Configuration INtrouvable");
+    // ═══════════════════════════════════════════════════════════════
+    // UPDATE ÉTAPES — LE PRESTATAIRE PERSONNALISE SON WORKFLOW
+    // ═══════════════════════════════════════════════════════════════
+    // Exemple : pressing sans agent ajoute "sechage"
+    // ["reception","traitement","sechage","restitution"]
+    // → Zéro ligne de code Java modifiée !
+    public ConfigPrestataireDTO modifierEtapes(Long prestataireId, String etapesJson) {
+        ConfigPrestataire cp = configPrestataireRepository.findByPrestataireId(prestataireId)
+                .orElseThrow(() -> new RuntimeException("Configuration introuvable"));
+        cp.setEtapesPersonnalisees(etapesJson);
+        return toDTO(configPrestataireRepository.save(cp));
+    }
 
+    // ═══════════════════════════════════════════════════════════════
+    // UPDATE DISPONIBILITÉ
+    // ═══════════════════════════════════════════════════════════════
+    public ConfigPrestataireDTO toggleDisponibilite(Long prestataireId, Boolean disponible) {
+        ConfigPrestataire cp = configPrestataireRepository.findByPrestataireId(prestataireId)
+                .orElseThrow(() -> new RuntimeException("Configuration introuvable"));
+        cp.setDisponible(disponible);
+        return toDTO(configPrestataireRepository.save(cp));
+    }
+
+    // ═══════════════════════════════════════════════════════════════
+    // DELETE
+    // ═══════════════════════════════════════════════════════════════
+    public void supprimerConfig(Long id) {
+        if (!configPrestataireRepository.existsById(id)) {
+            throw new RuntimeException("Configuration introuvable");
         }
         configPrestataireRepository.deleteById(id);
     }
 
+    // ═══════════════════════════════════════════════════════════════
+    // MAPPER entité → DTO
+    // ═══════════════════════════════════════════════════════════════
+    public ConfigPrestataireDTO toDTO(ConfigPrestataire cp) {
+        ConfigPrestataireDTO dto = new ConfigPrestataireDTO();
+        dto.setId(cp.getId());
+        dto.setTarifsPersonnalises(cp.getTarifsPersonnalises());
+        dto.setOptionsActives(cp.getOptionsActives());
+        dto.setPrestationsAjoutees(cp.getPrestationsAjoutees());
+        dto.setZoneCouverture(cp.getZoneCouverture());
+        dto.setEtapesPersonnalisees(cp.getEtapesPersonnalisees());  // ← NOUVEAU
+        dto.setModesDepotAcceptes(cp.getModesDepotAcceptes());      // ← NOUVEAU
+        dto.setAvecAgent(cp.getAvecAgent());                        // ← NOUVEAU
+        dto.setDisponible(cp.getDisponible());                      // ← NOUVEAU
 
-    // Méthode utilitaire — crée service si absent
-        private void creerSiAbsent( String typeService, String label,
-    String etapes, boolean exigeDevis,  boolean exigePreuve ){
-
-            if (configurationServiceRepository
-                    .findByTypeService(typeService)
-                    .isEmpty()){
-                ConfigurationService cs= new ConfigurationService();
-                cs.setTypeService(typeService);
-                cs.setLabelAffiche(label);
-                cs.setEtapes(etapes);
-                cs.setExigeDevis(exigeDevis);
-                cs.setExigePreuve(exigePreuve);
-
-            }
-
-
+        if (cp.getPrestataire() != null) {
+            dto.setPrestataireId(cp.getPrestataire().getId());
+            dto.setNomPrestataire(cp.getPrestataire().getNomCommercial());
+        }
+        if (cp.getConfigurationService() != null) {
+            dto.setTypeService(cp.getConfigurationService().getTypeService());
+        }
+        return dto;
     }
-
-    // ═══ MAPPER entité → DTO ═══
-    public ConfigPrestataireDTO toDTO(ConfigPrestataire cPrest){
-         ConfigPrestataireDTO cdto= new ConfigPrestataireDTO();
-         cdto.setId(cPrest.getId());
-         cdto.setTarifsPersonnalises(cPrest.getTarifsPersonnalises());
-         cdto.setOptionsActives(cPrest.getOptionsActives());
-         cdto.setPrestationsAjoutees(cPrest.getPrestationsAjoutees());
-         cdto.setZoneCouverture(cPrest.getZoneCouverture());
-         if (cPrest.getPrestataire() !=null)
-             cdto.setPrestataireId(cPrest.getPrestataire().getId());
-         if (cPrest.getConfigurationService() !=null)
-             cdto.setTypeService(cPrest.getConfigurationService().getTypeService());
-         return cdto;
-
-
-
-    }
-
-
-
 }
-
