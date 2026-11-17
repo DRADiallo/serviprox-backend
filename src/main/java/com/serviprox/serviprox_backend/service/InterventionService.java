@@ -53,7 +53,7 @@ public class InterventionService {
 
          */
         if (commande.getStatutCommande() != StatutCommande.CONFIRMEE
-                && commande.getStatutCommande() !=StatutCommande.EN_LIVRAISON){
+                && commande.getStatutCommande() !=StatutCommande.EN_COURS){
             throw new RuntimeException("Impossible de démarrer : "
                                         + "commande non confirmée. "
                                         + "Statut : "
@@ -74,8 +74,9 @@ public class InterventionService {
         intervention.setStatut("EN_COURS");
 
         // Mettre à jour le statut de la commande
-        // CONFIRMEE → EN_TRAITEMENT
-        commande.setStatutCommande(StatutCommande.EN_TRAITEMENT);
+        // Couche 2 — EN_COURS + étape dynamique (ex: "collecte", "livraison")
+        commande.setStatutCommande(StatutCommande.EN_COURS);
+        commande.setEtapeCourante(typeIntervention.toLowerCase());
         commandeRepository.save(commande);
 
         Intervention saved= interventionRepository.save(intervention);
@@ -163,8 +164,8 @@ public class InterventionService {
             // ← Collecte terminée
             // → EN_VERIFICATION (prestataire vérifie)
             // pas EN_LIVRAISON directement !
-            commande.setStatutCommande(
-                    StatutCommande.EN_VERIFICATION);
+            commande.setStatutCommande(StatutCommande.EN_COURS);
+            commande.setEtapeCourante("traitement");
 
             notificationService.envoyer(
                     commande.getClient().getId(),
@@ -174,11 +175,8 @@ public class InterventionService {
                             + "vos articles.");
 
         } else {
-            // ← Livraison/Réparation/Soins terminés
-            // → VERIFICATION_FINALE
-            // pas TERMINEE (supprimé !)
-            commande.setStatutCommande(
-                    StatutCommande.VERIFICATION_FINALE);
+            commande.setStatutCommande(StatutCommande.EN_COURS);
+            commande.setEtapeCourante("verification");
 
             notificationService.envoyer(
                     commande.getClient().getId(),

@@ -315,6 +315,7 @@ public class ConfigurationServiceService {
         dto.setExigeDevis(cs.getExigeDevis());
         dto.setExigePreuve(cs.getExigePreuve());
         dto.setActif(cs.getActif());
+
         return dto;
     }
 }

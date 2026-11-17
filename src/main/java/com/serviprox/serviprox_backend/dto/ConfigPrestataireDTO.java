@@ -38,4 +38,9 @@ public class ConfigPrestataireDTO {
 
     // Disponible pour nouvelles commandes ?
     private Boolean disponible;
+
+    // À ajouter — viennent de ConfigurationService
+    private String champsCommande;    // JSON des champs du formulaire
+    private String typesPrestation;   // JSON des prestations proposées
+    private String etapesEffectives;  // étapesPersonnalisees OU ConfigurationService.etapes
 }

@@ -54,10 +54,10 @@ WORKDIR /app
 # --from=build = prendre depuis l'étape "build" ci-dessus
 # *.jar = n'importe quel fichier .jar dans target/
 # app.jar = nom simplifié dans l'image finale
-#COPY --from=build /app/target/*.jar app.jar
+COPY --from=build /app/target/*.jar app.jar
 
 # déjà compilé avec mvn package
-COPY target/*.jar app.jar
+#COPY target/*.jar app.jar
 
 # Déclarer le port utilisé par Spring Boot
 # EXPOSE = documentation, pas une ouverture réelle

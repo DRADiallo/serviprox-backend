@@ -86,8 +86,8 @@ public class PaiementService {
                 "PAIEMENT_RECU");
 
         // ← Passer statut PAIEMENT_RECU
-        commande.setStatutCommande(
-                StatutCommande.EN_LIVRAISON);
+        commande.setStatutCommande(StatutCommande.EN_COURS);
+        commande.setEtapeCourante("livraison");
         commandeRepository.save(commande);
 
         // ← Notifier prestataire
@@ -146,8 +146,8 @@ public class PaiementService {
         // ← Passer EN_LIVRAISON
         // (pas CLOTUREE directement !)
         var commande = paiement.getCommande();
-        commande.setStatutCommande(
-                StatutCommande.EN_LIVRAISON);
+        commande.setStatutCommande(StatutCommande.EN_COURS);
+        commande.setEtapeCourante("livraison");
         commandeRepository.save(commande);
 
         // ← Notifier client

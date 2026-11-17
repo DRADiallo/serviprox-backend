@@ -19,6 +19,13 @@ public class AuthController {
 
     private final AuthService authService;
 
+
+    // POST /api/auth/login/admin
+    @PostMapping("/login/admin")
+    public ResponseEntity<AuthResponse> loginAdmin(@RequestBody AuthRequest req) {
+        return ResponseEntity.ok(authService.loginAdmin(req));
+    }
+
     // ═══════════════════════════════════════
     // POST /api/auth/register/client
     // ═══════════════════════════════════════

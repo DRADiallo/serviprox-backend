@@ -69,7 +69,7 @@ public class SecurityConfig {
                         .hasAnyRole("PRESTATAIRE", "ADMIN")
 
                         // ══ AGENT/LIVREUR ══
-                        .requestMatchers("/api/agent/**")
+                        .requestMatchers("/api/agents/**")
                         .hasAnyRole(
                                 "LIVREUR", "AGENT",
                                 "PRESTATAIRE", "ADMIN")
@@ -107,6 +107,23 @@ public class SecurityConfig {
                         // ══ TOUS AUTHENTIFIÉS ══
                         .anyRequest().authenticated()
                 )
+//                .authorizeHttpRequests(auth -> auth
+//                        .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
+//                        .requestMatchers("/api/auth/**").permitAll()
+//                        .requestMatchers("/api/prestataire", "/api/prestataire/zone", "/api/prestataire/tous").authenticated()
+//                        .requestMatchers("/api/admin/**").hasAnyAuthority("ADMIN", "ROLE_ADMIN")
+//                        .requestMatchers("/api/prestataire/**").hasAnyAuthority("PRESTATAIRE", "ROLE_PRESTATAIRE", "ADMIN", "ROLE_ADMIN")
+//                        .requestMatchers("/api/agents/**").hasAnyAuthority("LIVREUR", "ROLE_LIVREUR", "AGENT", "ROLE_AGENT", "PRESTATAIRE", "ROLE_PRESTATAIRE", "ADMIN", "ROLE_ADMIN")
+//                        .requestMatchers("/api/client/**").hasAnyAuthority("CLIENT", "ROLE_CLIENT", "ADMIN", "ROLE_ADMIN")
+//                        .requestMatchers("/api/commande/**").hasAnyAuthority("CLIENT", "ROLE_CLIENT", "PRESTATAIRE", "ROLE_PRESTATAIRE", "LIVREUR", "ROLE_LIVREUR", "ADMIN", "ROLE_ADMIN")
+//                        .requestMatchers("/api/service-config/**").authenticated()
+//                        .requestMatchers("/api/preuve/**").hasAnyAuthority("CLIENT", "ROLE_CLIENT", "PRESTATAIRE", "ROLE_PRESTATAIRE", "LIVREUR", "ROLE_LIVREUR", "ADMIN", "ROLE_ADMIN")
+//                        .requestMatchers("/api/verification/**").hasAnyAuthority("CLIENT", "ROLE_CLIENT", "PRESTATAIRE", "ROLE_PRESTATAIRE", "LIVREUR", "ROLE_LIVREUR", "ADMIN", "ROLE_ADMIN")
+//                        .requestMatchers("/api/notification/**").authenticated()
+//                        .requestMatchers("/api/paiement/**").hasAnyAuthority("CLIENT", "ROLE_CLIENT", "PRESTATAIRE", "ROLE_PRESTATAIRE", "AGENT", "ROLE_AGENT", "LIVREUR", "ROLE_LIVREUR", "ADMIN", "ROLE_ADMIN")
+//                        .anyRequest().authenticated()
+//                )
+
 
                 // Filtre JWT avant authentification
                 .addFilterBefore(

@@ -20,6 +20,11 @@ public class ConfigPrestataireService {
     private final PrestataireRepository prestataireRepository;
     private final ConfigurationServiceRepository configurationServiceRepository;
 
+    // ─── Champs résolus depuis ConfigurationService ──────────────────
+    private String champsCommande;    // JSON des champs du formulaire client
+    private String typesPrestation;   // JSON des prestations proposées
+    private String etapesEffectives;  // étapes résolues (override OU défaut)
+
     // ═══════════════════════════════════════════════════════════════
     // CREATE / UPDATE — Prestataire configure son service
     // ═══════════════════════════════════════════════════════════════
@@ -145,6 +150,33 @@ public class ConfigPrestataireService {
     }
 
     // ═══════════════════════════════════════════════════════════════
+    // ACTIVER / DÉSACTIVER COLLECTE & LIVRAISON
+    // ═══════════════════════════════════════════════════════════════
+    // Le grand argument du mémoire : le prestataire reconfigure son
+    // service EN LIVE depuis Flutter — zéro modification de code Java !
+    //
+    // Pressing Diallo (sans agent) → active collecte 6 mois plus tard :
+    //   avecAgent          = true
+    //   modesDepotAcceptes = ["Collecte domicile","Dépôt atelier (livraison)"]
+    //   etapesPersonnal.   = ["collecte","traitement","livraison"]
+    // → Flutter déverrouille IMMÉDIATEMENT les fonctionnalités agent
+    public ConfigPrestataireDTO configurerCollecteLivraison(
+            Long prestataireId,
+            Boolean avecAgent,
+            String modesDepotAcceptes,
+            String etapesPersonnalisees) {
+
+        ConfigPrestataire cp = configPrestataireRepository.findByPrestataireId(prestataireId)
+                .orElseThrow(() -> new RuntimeException("Configuration introuvable"));
+
+        cp.setAvecAgent(avecAgent);
+        cp.setModesDepotAcceptes(modesDepotAcceptes);
+        cp.setEtapesPersonnalisees(etapesPersonnalisees);
+
+        return toDTO(configPrestataireRepository.save(cp));
+    }
+
+    // ═══════════════════════════════════════════════════════════════
     // DELETE
     // ═══════════════════════════════════════════════════════════════
     public void supprimerConfig(Long id) {
@@ -164,10 +196,10 @@ public class ConfigPrestataireService {
         dto.setOptionsActives(cp.getOptionsActives());
         dto.setPrestationsAjoutees(cp.getPrestationsAjoutees());
         dto.setZoneCouverture(cp.getZoneCouverture());
-        dto.setEtapesPersonnalisees(cp.getEtapesPersonnalisees());  // ← NOUVEAU
-        dto.setModesDepotAcceptes(cp.getModesDepotAcceptes());      // ← NOUVEAU
-        dto.setAvecAgent(cp.getAvecAgent());                        // ← NOUVEAU
-        dto.setDisponible(cp.getDisponible());                      // ← NOUVEAU
+        dto.setEtapesPersonnalisees(cp.getEtapesPersonnalisees());
+        dto.setModesDepotAcceptes(cp.getModesDepotAcceptes());
+        dto.setDisponible(cp.getDisponible());
+
 
         if (cp.getPrestataire() != null) {
             dto.setPrestataireId(cp.getPrestataire().getId());
@@ -175,6 +207,39 @@ public class ConfigPrestataireService {
         }
         if (cp.getConfigurationService() != null) {
             dto.setTypeService(cp.getConfigurationService().getTypeService());
+
+            // ─── RÉSOLUTION avecAgent côté serveur ────────────────────────
+            // Flutter reçoit TOUJOURS un Boolean non-null — jamais null
+            // Priorité : override prestataire → défaut ConfigurationService
+            Boolean avecAgentResolu = cp.getAvecAgent() != null
+                    ? cp.getAvecAgent()                                    // pressing sans agent → false
+                    : cp.getConfigurationService().getAvecAgent();         // hérite du type service
+            dto.setAvecAgent(avecAgentResolu);
+
+            // ─── Champs résolus depuis ConfigurationService ──────────────────
+            dto.setChampsCommande(
+                    cp.getConfigurationService().getChampsCommande());
+
+            dto.setTypesPrestation(
+                    cp.getConfigurationService().getTypesPrestation());
+
+            // Étapes effectives : override prestataire OU défaut du type service
+//            dto.setEtapesEffectives(
+//                    cp.getEtapesPersonnalisees() != null
+//                            ? cp.getEtapesPersonnalisees()
+//                            : cp.getConfigurationService().getEtapes());
+
+            // Remplace les lignes 226-230 :
+            String rawMetier = cp.getEtapesPersonnalisees() != null
+                    ? cp.getEtapesPersonnalisees()          // ← CE QUE LE PRESTATAIRE A CONFIGURÉ
+                    : cp.getConfigurationService().getEtapes(); // ← défaut admin
+
+
+            // Wrapper couche 1 autour des étapes métier du prestataire
+            String inner = rawMetier.trim()
+                    .replaceAll("^\\[", "").replaceAll("\\]$", "");
+            dto.setEtapesEffectives(
+                    "[\"CREE\",\"CONFIRMEE\"," + inner + ",\"CLOTUREE\"]");
         }
         return dto;
     }

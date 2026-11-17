@@ -106,18 +106,18 @@ public class AuthService {
 
         // ← AJOUT : normaliser le téléphone
         // Enlever l'indicatif +221 si présent
-        String telephoneNormalise = req.getTelephone()
-                .replaceAll("\\+221", "")  // enlever +221
-                .replaceAll("\\s", "")     // enlever espaces
-                .trim();
+//        String telephoneNormalise = req.getTelephone()
+//                .replaceAll("\\+221", "")  // enlever +221
+//                .replaceAll("\\s", "")     // enlever espaces
+//                .trim();
+
         // Comparer avec le téléphone en base
 
         // 1. Vérifier email
         var acteur = acteurRepository
                 .findByEmail(req.getEmail())
                 .orElseThrow(() ->
-                        new RuntimeException(
-                                "Email introuvable"));
+                        new RuntimeException("Email introuvable"));
 
         // 2. Vérifier mot de passe
         if (!passwordEncoder.matches(
@@ -128,20 +128,37 @@ public class AuthService {
         }
 
         // 3. Vérifier téléphone
-        if (!acteur.getTelephone().equals(
-                req.getTelephone())) {
-            throw new RuntimeException(
-                    "Numéro de téléphone incorrect");
-        }
-        if (!acteur.getTelephone().equals(
-                telephoneNormalise)) {
-            throw new RuntimeException(
-                    "Numéro de téléphone incorrect");
+
+        // 3. Vérifier téléphone — cast selon le sous-type
+        String telephoneActeur = "";
+        if (acteur instanceof Client c) {
+            telephoneActeur = c.getTelephone() != null ? c.getTelephone() : "";
+        } else if (acteur instanceof Prestataire p) {
+            telephoneActeur = p.getTelephone() != null ? p.getTelephone() : "";
         }
 
+// Normaliser les deux : enlever +221 et espaces
+        String telNorm = req.getTelephone()
+                .replaceAll("\\+221", "").replaceAll("\\s", "").trim();
+        String telBase = telephoneActeur
+                .replaceAll("\\+221", "").replaceAll("\\s", "").trim();
+
+        if (!telBase.isEmpty() && !telBase.equals(telNorm)) {
+            throw new RuntimeException("Numéro de téléphone incorrect");
+        }
+//        if (!acteur.getTelephone().equals(
+//                req.getTelephone())) {
+//            throw new RuntimeException(
+//                    "Numéro de téléphone incorrect");
+//        }
+//        if (!acteur.getTelephone().equals(
+//                telephoneNormalise)) {
+//            throw new RuntimeException(
+//                    "Numéro de téléphone incorrect");
+//        }
+
         // 4. Supprimer anciens OTPs
-        otpRepository.deleteByTelephone(
-                req.getTelephone());
+        otpRepository.deleteByTelephone(req.getTelephone());
 
         // 5. Générer OTP à 6 chiffres
         String otpClair = String.valueOf(
@@ -159,8 +176,7 @@ public class AuthService {
         otpRepository.save(otp);
 
         // 7. Envoyer SMS
-        smsService.envoyerOtp(
-                req.getTelephone(), otpClair);
+        smsService.envoyerOtp(req.getTelephone(), otpClair);
 
         // 8. Retourner message
         return Map.of(
@@ -192,10 +208,8 @@ public class AuthService {
         }
 
         // 3. Vérifier code
-        if (!passwordEncoder.matches(
-                code, otp.getCode())) {
-            throw new RuntimeException(
-                    "Code OTP incorrect");
+        if (!passwordEncoder.matches(code, otp.getCode())) {
+            throw new RuntimeException("Code OTP incorrect");
         }
 
         // 4. Marquer OTP comme utilisé
@@ -209,14 +223,38 @@ public class AuthService {
                         new RuntimeException(
                                 "Acteur introuvable"));
 
-        // 6. Retourner token JWT
+        // ✅ 6. Vérifier statut du prestataire
+        if (acteur instanceof Prestataire p) {
+            if (p.getStatut() == StatutActeur.EN_ATTENTE_VALIDATION) {
+                throw new RuntimeException(
+                        "Compte en attente de validation par l'administrateur");
+            }
+            if (p.getStatut() == StatutActeur.SUSPENDU
+                    || p.getStatut() == StatutActeur.INACTIF) {
+                throw new RuntimeException(
+                        "Compte suspendu/inactif. Contactez l'administrateur.");
+            }
+        }
+
+        // 7. Retourner token JWT
         String adresse = "";
         if (acteur instanceof Client client) {
             adresse = client
                     .getAdressePrincipale() != null
                     ? client.getAdressePrincipale()
                     : "";
+        } else if (acteur instanceof Prestataire p) {
+            adresse = p.getZoneCouverture() != null
+                    ? p.getZoneCouverture() : "";
         }
+
+//        // ✅ FIX : normaliser le rôle — retirer le préfixe ROLE_ si présent
+//        // → registerPrestataire stocke "PRESTATAIRE", verifyOtp doit faire pareil
+//        // → Évite "ROLE_ROLE_PRESTATAIRE" dans JwtAuthFilter → 403
+//        String roleStr = acteur.getRole().name();
+//        if (roleStr.startsWith("ROLE_")) {
+//            roleStr = roleStr.substring(5); // "ROLE_PRESTATAIRE" → "PRESTATAIRE"
+//        }
 
         return new AuthResponse(
                 jwtUtils.genererToken(
@@ -316,6 +354,43 @@ public class AuthService {
                     "Code OTP de cet Agent est  envoyé au " + telephone,
                     "telephone", telephone
             );
+    }
+
+    // ═══════════════════════════════════════
+// LOGIN ADMIN — sans OTP (pour dashboard React)
+// ═══════════════════════════════════════
+    @Transactional
+    public AuthResponse loginAdmin(AuthRequest req) {
+        // 1. Chercher par email
+        var acteur = acteurRepository
+                .findByEmail(req.getEmail())
+                .orElseThrow(() -> new RuntimeException("Email introuvable"));
+
+        // 2. Vérifier que c'est bien un admin
+        if (acteur.getRole() != RoleUtilisateur.ADMIN) {
+            throw new RuntimeException("Accès refusé : compte non administrateur");
+        }
+
+        // 3. Vérifier statut
+        if (acteur.getStatut() != StatutActeur.ACTIF) {
+            throw new RuntimeException("Compte administrateur inactif");
+        }
+
+        // 4. Vérifier mot de passe
+        if (!passwordEncoder.matches(req.getMotDePasse(), acteur.getMotDePasse())) {
+            throw new RuntimeException("Mot de passe incorrect");
+        }
+
+        // 5. Retourner JWT directement (pas d'OTP)
+        return new AuthResponse(
+                jwtUtils.genererToken(acteur.getId(), acteur.getRole().name()),
+                acteur.getRole().name(),
+                acteur.getId(),
+                acteur.getNom(),
+                acteur.getPrenom(),
+                acteur.getEmail(),
+                ""
+        );
     }
 
 

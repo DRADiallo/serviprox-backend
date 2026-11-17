@@ -494,7 +494,7 @@ public class CommandeService {
         dto.setDateCommande(c.getDateCommande() != null ? c.getDateCommande().toLocalDate() : null);
 
         // ✅ modeDepot est un String (plus d'enum) — pas de .name()
-        dto.setMotDepot(c.getModeDepot());
+        dto.setModeDepot(c.getModeDepot());
 
         dto.setNomPrestataire(c.getPrestataire().getNomCommercial());
         dto.setDescriptionColis(c.getDescriptionColis());

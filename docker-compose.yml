@@ -1,6 +1,6 @@
 # Version de la syntaxe docker-compose
 # 3.8 = version stable et compatible
-version: '3.8'
+#version: '3.8'
 
 # Liste de tous les services (conteneurs)
 services:

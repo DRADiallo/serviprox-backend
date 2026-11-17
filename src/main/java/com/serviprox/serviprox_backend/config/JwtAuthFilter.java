@@ -80,12 +80,17 @@ public class JwtAuthFilter extends OncePerRequestFilter {
 
                 // Créer l'authentification Spring
                 // ROLE_ préfixe requis par Spring Security
+                // Si le JWT stocke "ROLE_PRESTATAIRE" → authority = "ROLE_PRESTATAIRE"
+                // Si le JWT stocke "PRESTATAIRE"      → authority = "ROLE_PRESTATAIRE"
+                String authority = (role != null && role.startsWith("ROLE_"))
+                        ? role
+                        : "ROLE_" + role;
                 UsernamePasswordAuthenticationToken auth =
                         new UsernamePasswordAuthenticationToken(
                                 userId,
                                 null,
                                 List.of(new SimpleGrantedAuthority(
-                                        "ROLE_" + role))
+                                        authority))
                         );
 
                 // Enregistrer dans le contexte

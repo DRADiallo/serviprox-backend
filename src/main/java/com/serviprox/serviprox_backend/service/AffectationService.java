@@ -349,10 +349,7 @@ public class AffectationService{
                     a.getCommande().getId());
             dto.setMontantTotal(
                     a.getCommande().getMontantTotal());
-            dto.setMotDepot(
-                    a.getCommande().getModeDepot() != null
-                            ? a.getCommande().getModeDepot()
-                            .name() : null);
+            dto.setMotDepot(a.getCommande().getModeDepot());
             dto.setDescriptionColis(
                     a.getCommande().getDescriptionColis());
 

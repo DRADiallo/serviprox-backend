@@ -80,9 +80,7 @@ public class AdminService {
 
         // Commandes Par Statut
 
-        stats.put("commandesEnCours", commandeRepository
-                .findByStatutCommande(StatutCommande.EN_TRAITEMENT)
-                .size());
+        //stats.put("commandesEnCours", commandeRepository.findByStatutCommande(StatutCommande.EN_TRAITEMENT).size());
 
         stats.put("commandesEnCloturees", commandeRepository
                 .findByStatutCommande(StatutCommande.CLOTUREE)
@@ -415,13 +413,6 @@ public class AdminService {
             throw new RuntimeException("Evaluation Introuvable");
         }
     }
-
-
-
-
-
-
-
 
 }
 
