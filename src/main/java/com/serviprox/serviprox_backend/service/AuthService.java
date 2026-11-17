@@ -61,7 +61,8 @@ public class AuthService {
                 client.getPrenom(),
                 client.getEmail(),
                 client.getAdressePrincipale() != null
-                        ? client.getAdressePrincipale() : ""
+                        ? client.getAdressePrincipale() : "",
+                null
         );
     }
 
@@ -90,7 +91,8 @@ public class AuthService {
                 p.getNom(),
                 p.getPrenom(),
                 p.getEmail(),
-                p.getZoneCouverture() !=null ? p.getZoneCouverture():""
+                p.getZoneCouverture() !=null ? p.getZoneCouverture():"",
+                p.getTypeService()
 
 
         );
@@ -255,7 +257,10 @@ public class AuthService {
 //        if (roleStr.startsWith("ROLE_")) {
 //            roleStr = roleStr.substring(5); // "ROLE_PRESTATAIRE" → "PRESTATAIRE"
 //        }
-
+        String typeService = null;
+        if (acteur instanceof Prestataire p) {
+            typeService = p.getTypeService();  // ← récupère le type depuis la BD
+        }
         return new AuthResponse(
                 jwtUtils.genererToken(
                         acteur.getId(),
@@ -265,7 +270,9 @@ public class AuthService {
                 acteur.getNom(),
                 acteur.getPrenom(),
                 acteur.getEmail(),
-                adresse
+                adresse,
+                typeService
+
         );
     }
 
@@ -389,7 +396,8 @@ public class AuthService {
                 acteur.getNom(),
                 acteur.getPrenom(),
                 acteur.getEmail(),
-                ""
+                "",
+                null
         );
     }
 
