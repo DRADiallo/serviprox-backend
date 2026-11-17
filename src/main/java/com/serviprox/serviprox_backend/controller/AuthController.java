@@ -108,13 +108,20 @@ public class AuthController {
     //   ADMIN       → Message "web uniquement"
     // ═══════════════════════════════════════
     @PostMapping("/verify-otp")
-    public ResponseEntity<AuthResponse>
-    verifyOtp(
+    public ResponseEntity<?> verifyOtp(
             @RequestParam String telephone,
             @RequestParam String code) {
-        return ResponseEntity.ok(
-                authService.verifyOtp(
-                        telephone, code));
+        try {
+            return ResponseEntity.ok(
+                    authService.verifyOtp(telephone, code));
+        } catch (RuntimeException e) {
+            // Retourne 400 + {"message": "..."} lisible par Flutter
+            // Ex : "Compte en attente de validation par l'administrateur"
+            //      "Code OTP expiré"
+            //      "Code OTP incorrect"
+            return ResponseEntity.badRequest()
+                    .body(Map.of("message", e.getMessage()));
+        }
     }
 
     // ═══════════════════════════════════════

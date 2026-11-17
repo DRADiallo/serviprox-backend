@@ -56,11 +56,18 @@ public class ConfigPrestataireController {
     // GET /api/prestataire/config/{prestataireId}
     // Flutter lit la config du prestataire
     // → affiche tarifs, options, avecAgent au client
+    // Retourne 404 si pas encore configuré (non 500)
     // ═══════════════════════════════════════════════════════════════
     @GetMapping("/{prestataireId}")
-    public ResponseEntity<ConfigPrestataireDTO> getByPrestataire(
+    public ResponseEntity<?> getByPrestataire(
             @PathVariable Long prestataireId) {
-        return ResponseEntity.ok(configPrestataireService.getByPrestataire(prestataireId));
+        try {
+            return ResponseEntity.ok(
+                    configPrestataireService.getByPrestataire(prestataireId));
+        } catch (RuntimeException e) {
+            // Pas encore configuré → 404 (Flutter affiche bannière "Configurez votre service")
+            return ResponseEntity.notFound().build();
+        }
     }
 
     // ═══════════════════════════════════════════════════════════════
