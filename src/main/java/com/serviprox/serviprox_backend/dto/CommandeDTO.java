@@ -15,6 +15,10 @@ public class CommandeDTO {
     // ─── modeDepot (était "motDepot" — corrigé) ─────────────────────────
     private String modeDepot;
 
+    // ─── IDs pour navigation Flutter ─────────────────────────────────────
+    private Long prestataireId;   // permet au client de re-fetcher la config prestataire
+    private Long clientId;
+
     private String nomPrestataire;
     private String nomClient;
     private String telephoneClient;
@@ -38,4 +42,9 @@ public class CommandeDTO {
     // null si statut = CREE ou CONFIRMEE
     // Ex pressing : "collecte" | "traitement" | "livraison"
     private String etapeCourante;
+
+    // ─── ÉTAPES EFFECTIVES (snapshot au moment de la commande) ───────────
+    // Ex: ["CREE","CONFIRMEE","reception","traitement","restitution","CLOTUREE"]
+    // Flutter l'utilise pour afficher la barre de progression de la commande
+    private String etapesEffectives;
 }

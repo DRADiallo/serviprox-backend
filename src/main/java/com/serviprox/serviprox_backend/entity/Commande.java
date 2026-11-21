@@ -48,6 +48,15 @@ public class Commande {
     @Column
     private String etapeCourante;
 
+
+    // ─── ÉTAPES EFFECTIVES AU MOMENT DE LA COMMANDE ─────────────────────
+    // Snapshot des étapes configurées par le prestataire lors de la création
+    // Ex: ["CREE","CONFIRMEE","reception","traitement","restitution","CLOTUREE"]
+    // Permet d'afficher les étapes historiques même si le prestataire les modifie plus tard
+    @Column(columnDefinition = "TEXT")
+    private String etapesEffectives;
+
+
     // Données de configuration en JSON
     @Column(columnDefinition = "TEXT")
     private String configData;

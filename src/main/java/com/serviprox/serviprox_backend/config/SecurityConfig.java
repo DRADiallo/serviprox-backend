@@ -72,6 +72,11 @@ public class SecurityConfig {
                         .requestMatchers("/api/admin/**")
                         .hasRole("ADMIN")
 
+                        // ← AJOUT ICI (avant la règle catch-all PRESTATAIRE)
+                        // GET config prestataire — CLIENT peut LIRE (prestations, modes dépôt)
+                        .requestMatchers(HttpMethod.GET, "/api/prestataire/config/**")
+                        .hasAnyRole("PRESTATAIRE", "CLIENT", "ADMIN")
+
                         // ══ PRESTATAIRE ══
                         .requestMatchers("/api/prestataire/**")
                         .hasAnyRole("PRESTATAIRE", "ADMIN")

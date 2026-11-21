@@ -21,6 +21,7 @@ public class CommandeService {
     private final CommandeRepository commandeRepository;
     private final ClientRepository clientRepository;
     private final PrestataireRepository prestataireRepository;
+    private final ConfigPrestataireRepository configPrestataireRepository;
     private final EvenementSuiviService evenementSuiviService;
     private final AgentRepository agentRepository;
     private final AffectationRepository affectationRepository;
@@ -81,11 +82,27 @@ public class CommandeService {
             commande.setMontantTotal(totalPrix);
         }
 
+        // ─── SNAPSHOT étapes effectives au moment de la commande ────────────
+        configPrestataireRepository.findByPrestataireId(req.getPrestataireId())
+                .ifPresent(cp -> {
+                    String rawMetier = cp.getEtapesPersonnalisees() != null
+                            ? cp.getEtapesPersonnalisees()
+                            : (cp.getConfigurationService() != null
+                            ? cp.getConfigurationService().getEtapes()
+                            : null);
+                    if (rawMetier != null && !rawMetier.isBlank()) {
+                        String inner = rawMetier.trim()
+                                .replaceAll("^\\[", "").replaceAll("\\]$", "");
+                        commande.setEtapesEffectives(
+                                "[\"CREE\",\"CONFIRMEE\"," + inner + ",\"CLOTUREE\"]");
+                    }
+                });
+
         Commande saved = commandeRepository.save(commande);
 
         fcmService.envoyerNotification(
                 saved.getPrestataire().getId(),
-                "🔔 Nouvelle commande !",
+                " Nouvelle commande !",
                 "Client " + client.getPrenom() + " " + client.getNom()
                         + " a passé une commande #" + saved.getId(),
                 "NOUVELLE_COMMANDE");
@@ -496,10 +513,13 @@ public class CommandeService {
         // ✅ modeDepot est un String (plus d'enum) — pas de .name()
         dto.setModeDepot(c.getModeDepot());
 
+        dto.setPrestataireId(c.getPrestataire().getId());
         dto.setNomPrestataire(c.getPrestataire().getNomCommercial());
+        dto.setClientId(c.getClient().getId());
         dto.setDescriptionColis(c.getDescriptionColis());
         dto.setNomClient(c.getClient().getNom() + " " + c.getClient().getPrenom());
         dto.setTelephoneClient(c.getClient().getTelephone());
+        dto.setEtapesEffectives(c.getEtapesEffectives());
         dto.setPrixParTypePrestations(c.getPrixParTypePrestations());
         dto.setPrixCourseCollecte(c.getPrixCourseCollecte());
         dto.setPrixCourseLivraison(c.getPrixCourseLivraison());
